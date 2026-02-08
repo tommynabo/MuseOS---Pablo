@@ -9,7 +9,7 @@ interface DashboardProps {
     onSelectIdea: (idea: ContentPiece) => void;
 }
 
-import { runResearchWorkflow, runParasiteWorkflow } from '../services/geminiService';
+import { runGenerateWorkflow } from '../services/geminiService';
 
 // ... (existing imports, but keep them if not replacing top of file)
 
@@ -32,18 +32,15 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea }) => 
     const handleGenerate = async () => {
         setIsGenerating(true);
         try {
-            if (manualSource === 'keywords') {
-                // Trigger Research Workflow
-                // TODO: Add an input for the topic/keyword. For now hardcode or prompt user?
-                // The UI design doesn't have a topic input in the 'Generador Manual' card for keywords mode yet.
-                // We'll use a prompt for now or default to "AI Trends" if not present.
-                const topic = prompt("Introduce el tema para investigar:") || "Inteligencia Artificial";
-                await runResearchWorkflow(topic);
-                alert("Investigación iniciada! Los resultados aparecerán pronto.");
+            // Use the unified workflow - no popup needed!
+            // Keywords/creators are fetched from profile settings
+            const result = await runGenerateWorkflow(manualSource);
+
+            if (result.error) {
+                alert(`Error: ${result.error}`);
             } else {
-                // Trigger Parasite Workflow
-                await runParasiteWorkflow();
-                alert("Flujo de replicación viral iniciado!");
+                alert(`¡Generación completada! ${result.postsProcessed || 0} posts creados.`);
+                // Optionally refresh the ideas list here
             }
         } catch (error) {
             console.error(error);

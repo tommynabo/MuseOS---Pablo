@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { supabaseAdmin, getSupabaseUserClient } from './db';
 import { getCreatorPosts, searchLinkedInPosts, searchGoogleNews } from './services/apifyService';
-import { generatePostOutline, regeneratePost, generateIdeasFromResearch } from './services/openaiService';
+import { generatePostOutline, regeneratePost, generateIdeasFromResearch, evaluatePostEngagement } from './services/openaiService';
 
 const router = express.Router();
 
@@ -122,13 +122,9 @@ router.post('/workflow/parasite', requireAuth, async (req, res) => {
 
         const processedPosts = [];
 
-        // Step 3: Get User Profile (Persona)
+        // Step 3: Get User Profile (custom_instructions for tone of voice)
         const { data: profile } = await supabase.from('profiles').select('*').single();
-        const persona = profile ? {
-            personality: profile.tone,
-            keywords: profile.niche_keywords,
-            tone: profile.tone
-        } : {}; // Fallback or empty
+        const customInstructions = profile?.custom_instructions || '';
 
         for (const post of highEngagementPosts) {
             if (!post.text) continue;
@@ -136,8 +132,8 @@ router.post('/workflow/parasite', requireAuth, async (req, res) => {
             // Generate Outline
             const outline = await generatePostOutline(post.text);
 
-            // Regenerate Content
-            const rewritten = await regeneratePost(outline || '', post.text, persona);
+            // Regenerate Content using custom_instructions as master prompt
+            const rewritten = await regeneratePost(outline || '', post.text, customInstructions);
 
             // Save to DB
             await supabase.from('posts').insert({
@@ -271,6 +267,126 @@ router.get('/posts', requireAuth, async (req, res) => {
 
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
+});
+
+/**
+ * UNIFIED WORKFLOW: Generate content using profile settings
+ * Uses keywords OR creators from profile (no popup needed)
+ * Implements AI-based engagement evaluation
+ */
+router.post('/workflow/generate', requireAuth, async (req, res) => {
+    const { source } = req.body; // 'keywords' or 'creators'
+
+    const supabase = getUserSupabase(req);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+        // Step 1: Get User Profile with settings
+        const { data: profile } = await supabase.from('profiles').select('*').single();
+        if (!profile) {
+            res.status(400).json({ error: "Profile not found. Configure your settings first." });
+            return;
+        }
+
+        const keywords = profile.niche_keywords || [];
+        const customInstructions = profile.custom_instructions || '';
+
+        let allPosts: ApifyPost[] = [];
+
+        if (source === 'keywords') {
+            // Search LinkedIn for each keyword
+            console.log(`Searching LinkedIn for keywords: ${keywords.join(', ')}`);
+
+            if (keywords.length === 0) {
+                res.status(400).json({ error: "No keywords configured. Add keywords in Settings." });
+                return;
+            }
+
+            // Search for each keyword (max 5 keywords)
+            for (const keyword of keywords.slice(0, 5)) {
+                const posts = await searchLinkedInPosts([keyword], 5) as ApifyPost[];
+                allPosts = [...allPosts, ...posts];
+            }
+        } else {
+            // Get posts from monitored creators
+            const { data: creators } = await supabase.from('creators').select('linkedin_url');
+
+            if (!creators || creators.length === 0) {
+                res.status(400).json({ error: "No creators configured. Add creators in Settings." });
+                return;
+            }
+
+            const creatorUrls = creators.map((c: any) => c.linkedin_url);
+            console.log(`Scraping posts from ${creatorUrls.length} creators...`);
+            allPosts = await getCreatorPosts(creatorUrls, 10) as ApifyPost[];
+        }
+
+        console.log(`Fetched ${allPosts.length} total posts`);
+
+        // Step 2: AI-based engagement evaluation
+        const highEngagementPosts = await evaluatePostEngagement(allPosts);
+        console.log(`AI selected ${highEngagementPosts.length} high-engagement posts`);
+
+        if (highEngagementPosts.length === 0) {
+            res.json({ status: 'success', data: [], message: "No high-engagement posts found" });
+            return;
+        }
+
+        // Step 3: Process each post (max 5)
+        const processedPosts = [];
+
+        for (const post of highEngagementPosts.slice(0, 5)) {
+            if (!post.text) continue;
+
+            // Generate Outline
+            const outline = await generatePostOutline(post.text);
+
+            // Regenerate using custom_instructions (tone of voice)
+            const rewritten = await regeneratePost(outline || '', post.text, customInstructions);
+
+            // Save to DB
+            await supabase.from('posts').insert({
+                user_id: user.id,
+                original_post_id: post.id || 'unknown',
+                original_url: post.url || '',
+                original_content: post.text,
+                original_author: post.author?.name || 'Unknown',
+                generated_content: rewritten,
+                type: source === 'keywords' ? 'research' : 'parasite',
+                status: 'drafted',
+                meta: {
+                    outline,
+                    engagement: {
+                        likes: post.likesCount,
+                        comments: post.commentsCount,
+                        shares: post.sharesCount
+                    }
+                }
+            });
+
+            processedPosts.push({
+                original: post.text.substring(0, 200) + '...',
+                generated: rewritten,
+                engagement: {
+                    likes: post.likesCount,
+                    comments: post.commentsCount,
+                    shares: post.sharesCount
+                }
+            });
+        }
+
+        res.json({
+            status: 'success',
+            source,
+            postsProcessed: processedPosts.length,
+            data: processedPosts
+        });
+
+    } catch (error: any) {
+        console.error("Generate workflow error:", error);
+        res.status(500).json({ error: error.message || "Workflow failed" });
+    }
 });
 
 export default router;

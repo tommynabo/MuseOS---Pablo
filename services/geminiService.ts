@@ -62,6 +62,20 @@ export const runResearchWorkflow = async (topic: string) => {
   return response.json();
 };
 
+/**
+ * Unified workflow that uses profile settings (no popup needed)
+ * @param source - 'keywords' or 'creators'
+ */
+export const runGenerateWorkflow = async (source: 'keywords' | 'creators') => {
+  const headers = await getHeaders();
+  const response = await fetch(`${API_URL}/workflow/generate`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ source })
+  });
+  return response.json();
+};
+
 export const fetchCreators = async () => {
   const headers = await getHeaders();
   const response = await fetch(`${API_URL}/creators`, {
