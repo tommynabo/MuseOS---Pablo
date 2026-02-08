@@ -337,7 +337,13 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
         const processedPosts = [];
 
         for (const post of highEngagementPosts.slice(0, 5)) {
-            if (!post.text) continue;
+            // Debug Log
+            console.log(`Processing post ID: ${post.id || 'unknown'}`, { hasText: !!post.text, textLength: post.text?.length });
+
+            if (!post.text) {
+                console.log("Skipping post due to missing text.");
+                continue;
+            }
 
             // Generate Outline
             const outline = await generatePostOutline(post.text);
@@ -346,7 +352,7 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
             const rewritten = await regeneratePost(outline || '', post.text, customInstructions);
 
             // Save to DB
-            await supabase.from('posts').insert({
+            const { error: insertError } = await supabase.from('posts').insert({
                 user_id: user.id,
                 original_post_id: post.id || 'unknown',
                 original_url: post.url || '',
@@ -364,6 +370,12 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
                     }
                 }
             });
+
+            if (insertError) {
+                console.error("Supabase Insert Error:", insertError);
+            } else {
+                console.log("Post saved to DB successfully.");
+            }
 
             processedPosts.push({
                 original: post.text.substring(0, 200) + '...',
