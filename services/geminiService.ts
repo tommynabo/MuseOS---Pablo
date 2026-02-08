@@ -102,3 +102,9 @@ export const deleteCreator = async (id: number) => {
   });
   return response.json();
 };
+
+export const fetchPosts = async () => {
+  const headers = await getHeaders();
+  const response = await fetch(`${API_URL}/posts`, { headers });
+  return response.json();
+};

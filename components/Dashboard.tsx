@@ -7,13 +7,14 @@ interface DashboardProps {
     stats: Stats;
     ideas: ContentPiece[];
     onSelectIdea: (idea: ContentPiece) => void;
+    onRefresh?: () => void;
 }
 
 import { runGenerateWorkflow } from '../services/geminiService';
 
 // ... (existing imports, but keep them if not replacing top of file)
 
-const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea }) => {
+const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRefresh }) => {
     // State for the Hero Section controls
     const [manualCount, setManualCount] = useState(3);
     const [manualSource, setManualSource] = useState<'keywords' | 'creators'>('keywords');
@@ -43,7 +44,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea }) => 
                 audio.volume = 0.5;
                 audio.play().catch(e => console.log("Audio play failed", e));
                 alert(`¡Generación completada! ${result.postsProcessed || 0} posts creados.`);
-                // Optionally refresh the ideas list here
+                if (onRefresh) onRefresh();
             }
         } catch (error) {
             console.error(error);

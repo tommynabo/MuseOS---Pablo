@@ -63,10 +63,46 @@ const App: React.FC = () => {
           customInstructions: data.custom_instructions || '',
         });
       }
+      // Load real posts after profile
+      refreshPosts();
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshPosts = async () => {
+    try {
+      const posts = await import('./services/geminiService').then(m => m.fetchPosts());
+      if (Array.isArray(posts)) {
+        // Transform DB posts to ContentPiece format if needed
+        // The DB schema matches most fields, but we need to map snake_case to camelCase likely?
+        // Let's check the API response format from routes.ts. It returns raw DB rows.
+        // We need to map them to ContentPiece.
+
+        const mappedPosts: ContentPiece[] = posts.map((p: any) => ({
+          id: p.id,
+          sourceType: p.type === 'parasite' ? 'creator_reference' : 'keyword_search',
+          originalAuthor: p.original_author || 'Unknown',
+          originalUrl: p.original_url,
+          originalText: p.original_content,
+          viralMetrics: p.meta?.engagement || { likes: 0, comments: 0 },
+          tags: [p.type === 'parasite' ? 'Viral' : 'Research'],
+          status: p.status || 'idea', // Default to idea if null
+          targetDate: p.created_at, // Use created_at as target for now
+          generatedDraft: {
+            hook: p.meta?.outline?.split('\n')[2] || "New Idea", // Naive parsing, fine for now
+            body: p.generated_content || "",
+            cta: "",
+            researchNotes: p.meta?.news || []
+          }
+        }));
+
+        setContentPieces(mappedPosts);
+      }
+    } catch (e) {
+      console.error("Error fetching posts:", e);
     }
   };
 
@@ -146,6 +182,7 @@ const App: React.FC = () => {
           stats={MOCK_STATS[currentProfile.id]}
           ideas={contentPieces}
           onSelectIdea={handleIdeaSelect}
+          onRefresh={refreshPosts}
         />
       )}
       {activeTab === 'content' && (
