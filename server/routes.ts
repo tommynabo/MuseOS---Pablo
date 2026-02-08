@@ -336,27 +336,44 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
         // Step 3: Process each post (max 5)
         const processedPosts = [];
 
-        for (const post of highEngagementPosts.slice(0, 5)) {
-            // Debug Log
-            console.log(`Processing post ID: ${post.id || 'unknown'}`, { hasText: !!post.text, textLength: post.text?.length });
+        // Log the structure of the first post to debug "missing text" issue
+        if (highEngagementPosts.length > 0) {
+            console.log("First Post Keys:", Object.keys(highEngagementPosts[0]));
+            // Also log the text related fields specifically
+            const p = highEngagementPosts[0];
+            console.log("First Post Content Sample:", {
+                text: p.text?.substring(0, 50),
+                postText: p.postText?.substring(0, 50),
+                content: p.content?.substring(0, 50),
+                description: p.description?.substring(0, 50)
+            });
+        }
 
-            if (!post.text) {
-                console.log("Skipping post due to missing text.");
+        for (const post of highEngagementPosts.slice(0, 5)) {
+            // Robust content extraction
+            // Different Apify actors use different field names (text, postText, content, description)
+            const postContent = post.text || post.postText || post.content || post.description || '';
+
+            // Debug Log
+            console.log(`Processing post ID: ${post.id || 'unknown'}`, { hasContent: !!postContent, length: postContent?.length });
+
+            if (!postContent) {
+                console.log("Skipping post due to missing text content.");
                 continue;
             }
 
             // Generate Outline
-            const outline = await generatePostOutline(post.text);
+            const outline = await generatePostOutline(postContent);
 
             // Regenerate using custom_instructions (tone of voice)
-            const rewritten = await regeneratePost(outline || '', post.text, customInstructions);
+            const rewritten = await regeneratePost(outline || '', postContent, customInstructions);
 
             // Save to DB
             const { error: insertError } = await supabase.from('posts').insert({
                 user_id: user.id,
                 original_post_id: post.id || 'unknown',
-                original_url: post.url || '',
-                original_content: post.text,
+                original_url: post.url || post.postUrl || '',
+                original_content: postContent,
                 original_author: post.author?.name || 'Unknown',
                 generated_content: rewritten,
                 type: source === 'keywords' ? 'research' : 'parasite',
