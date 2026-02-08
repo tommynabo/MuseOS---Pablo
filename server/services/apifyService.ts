@@ -11,8 +11,8 @@ export const searchLinkedInPosts = async (keywords: string[], maxPosts = 5) => {
     const input = {
         maxPosts: maxPosts,
         maxReactions: 5,
-        scrapeComments: false,
-        scrapeReactions: false,
+        scrapeComments: true,
+        scrapeReactions: true,
         searchQueries: keywords,
         sortBy: "relevance"
     };
@@ -37,8 +37,8 @@ export const getCreatorPosts = async (profileUrls: string[], maxPosts = 3) => {
         maxPosts: maxPosts,
         maxReactions: 5,
         postedLimit: "week",
-        scrapeComments: false,
-        scrapeReactions: false,
+        scrapeComments: true,
+        scrapeReactions: true,
         targetUrls: profileUrls
     };
 

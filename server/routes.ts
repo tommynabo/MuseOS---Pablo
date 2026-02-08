@@ -31,6 +31,9 @@ interface ApifyPost {
     author?: {
         name?: string;
     };
+    likesCount?: number;
+    commentsCount?: number;
+    sharesCount?: number;
 }
 
 interface CreateCreatorRequest {
@@ -109,7 +112,13 @@ router.post('/workflow/parasite', requireAuth, async (req, res) => {
 
         // Step 2: Scrape Posts
         console.log(`Scraping posts for ${creatorUrls.length} creators...`);
-        const rawPosts = await getCreatorPosts(creatorUrls, 3) as ApifyPost[];
+        const rawPosts = await getCreatorPosts(creatorUrls, 10) as ApifyPost[];
+
+        // Filter by Engagement (e.g., > 10 reactions)
+        const ENGAGEMENT_THRESHOLD = 5;
+        const highEngagementPosts = rawPosts.filter(p => (p.likesCount || 0) + (p.commentsCount || 0) > ENGAGEMENT_THRESHOLD);
+
+        console.log(`Filtered ${rawPosts.length} posts to ${highEngagementPosts.length} high-engagement posts.`);
 
         const processedPosts = [];
 
@@ -121,7 +130,7 @@ router.post('/workflow/parasite', requireAuth, async (req, res) => {
             tone: profile.tone
         } : {}; // Fallback or empty
 
-        for (const post of rawPosts) {
+        for (const post of highEngagementPosts) {
             if (!post.text) continue;
 
             // Generate Outline
@@ -139,7 +148,14 @@ router.post('/workflow/parasite', requireAuth, async (req, res) => {
                 original_author: post.author?.name || 'Unknown',
                 generated_content: rewritten,
                 type: 'parasite',
-                meta: { outline }
+                meta: {
+                    outline,
+                    engagement: {
+                        likes: post.likesCount,
+                        comments: post.commentsCount,
+                        shares: post.sharesCount
+                    }
+                }
             });
 
             processedPosts.push({
