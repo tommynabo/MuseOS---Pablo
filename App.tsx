@@ -9,6 +9,7 @@ import ContentManager from './components/ContentManager';
 import { CLIENT_PROFILES, INITIAL_CONTENT, MOCK_STATS } from './constants';
 import { ContentPiece, ClientProfile, ClientPersona } from './types';
 import { Session } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -117,6 +118,7 @@ const App: React.FC = () => {
           const { error: insertError } = await supabase
             .from('profiles')
             .insert({
+              id: uuidv4(),
               user_id: session.user.id,
               tone: updated.tone,
               niche_keywords: updated.nicheKeywords,
