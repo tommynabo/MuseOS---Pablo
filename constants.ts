@@ -7,7 +7,7 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
     role: 'Psicóloga Clínica',
     avatar: 'https://picsum.photos/id/64/200/200',
     tone: 'Empático y Suave',
-    nicheKeywords: ['Rupturas', 'Depresión', 'Inteligencia Emocional', 'Sanación'],
+    nicheKeywords: ['Dependencia Emocional', 'Relaciones Tóxicas', 'Ansiedad', 'Autoestima', 'Psicología'],
     targetCreators: ['https://linkedin.com/in/brenebrown', 'https://linkedin.com/in/estherperel'],
     customInstructions: "Usa lenguaje inclusivo ('nosotros'). Evita jerga clínica complicada. Enfócate en la sensación de alivio y validación emocional.",
   },
