@@ -39,6 +39,9 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea }) => 
             if (result.error) {
                 alert(`Error: ${result.error}`);
             } else {
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); // Glass ping sound
+                audio.volume = 0.5;
+                audio.play().catch(e => console.log("Audio play failed", e));
                 alert(`¡Generación completada! ${result.postsProcessed || 0} posts creados.`);
                 // Optionally refresh the ideas list here
             }

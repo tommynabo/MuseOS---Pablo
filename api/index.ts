@@ -88,6 +88,8 @@ async function getCreatorPosts(profileUrls: string[], maxPosts = 3): Promise<Api
 async function evaluatePostEngagement(posts: ApifyPost[]): Promise<ApifyPost[]> {
     if (posts.length === 0) return [];
 
+    console.log(`Evaluating ${posts.length} posts for engagement...`);
+
     const postsData = posts.map((p, idx) => ({
         index: idx,
         text: p.text?.substring(0, 200) || '',
@@ -102,16 +104,42 @@ async function evaluatePostEngagement(posts: ApifyPost[]): Promise<ApifyPost[]> 
             messages: [
                 { role: "system", content: "Eres un experto en métricas de redes sociales." },
                 {
-                    role: "user", content: `Analiza estos posts y devuelve los índices con alto engagement (máx 5):
+                    role: "user", content: `Analiza estos posts y devuelve los índices de los 5 mejores basados en engagement (likes, comments, shares).
                 ${JSON.stringify(postsData)}
-                Responde JSON: { "indices": [0, 2, 4] }` }
+                Responde JSON puramente: { "indices": [0, 2, 4] }` }
             ],
             response_format: { type: "json_object" }
         });
-        const result = JSON.parse(response.choices[0].message.content || '{"indices": []}');
-        return (result.indices || []).map((i: number) => posts[i]).filter(Boolean).slice(0, 5);
+
+        const content = response.choices[0].message.content || '{"indices": []}';
+        console.log("AI Evaluation result:", content);
+
+        const result = JSON.parse(content);
+        const selectedIndices = result.indices || [];
+
+        let selectedPosts = selectedIndices.map((i: number) => posts[i]).filter(Boolean);
+
+        // FALLBACK: If AI selects fewer than 2 posts, fill up with top sorted posts
+        if (selectedPosts.length < 2) {
+            console.log("AI selected too few posts, using fallback sorting.");
+            const sorted = [...posts].sort((a, b) =>
+                ((b.likesCount || 0) + (b.commentsCount || 0) * 2) -
+                ((a.likesCount || 0) + (a.commentsCount || 0) * 2)
+            );
+            // Deduplicate
+            const existingIds = new Set(selectedPosts.map(p => p.url));
+            for (const p of sorted) {
+                if (selectedPosts.length >= 5) break;
+                if (!existingIds.has(p.url)) {
+                    selectedPosts.push(p);
+                    existingIds.add(p.url);
+                }
+            }
+        }
+
+        return selectedPosts.slice(0, 5);
     } catch (error) {
-        console.error("Engagement evaluation error:", error);
+        console.error("Engagement evaluation error (using fallback):", error);
         return posts.sort((a, b) => ((b.likesCount || 0) + (b.commentsCount || 0)) - ((a.likesCount || 0) + (a.commentsCount || 0))).slice(0, 5);
     }
 }
