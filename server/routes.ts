@@ -336,55 +336,52 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
         // Step 3: Process each post (max 5)
         const processedPosts = [];
 
-        // Log the structure of the first post to debug "missing text" issue
         if (highEngagementPosts.length > 0) {
-            console.log("First Post Keys:", Object.keys(highEngagementPosts[0]));
-            // Also log the text related fields specifically
-            const p = highEngagementPosts[0];
-            console.log("First Post Content Sample:", {
-                text: p.text?.substring(0, 50),
-                postText: p.postText?.substring(0, 50),
-                content: p.content?.substring(0, 50),
-                description: p.description?.substring(0, 50)
-            });
+            console.log("Full First Post Object:", JSON.stringify(highEngagementPosts[0], null, 2));
         }
 
         for (const post of highEngagementPosts.slice(0, 5)) {
             // Robust content extraction
             // Different Apify actors use different field names (text, postText, content, description)
-            const postContent = post.text || post.postText || post.content || post.description || '';
+            let postContent = post.text || post.postText || post.content || post.description;
 
             // Debug Log
-            console.log(`Processing post ID: ${post.id || 'unknown'}`, { hasContent: !!postContent, length: postContent?.length });
+            console.log(`Processing post ID: ${post.id || 'unknown'}`, { hasContent: !!postContent, keys: Object.keys(post) });
 
             if (!postContent) {
-                console.log("Skipping post due to missing text content.");
-                continue;
+                console.log("Missing content. Using debug fallback.");
+                // FALLBACK: Inject keys into content so we can see them in the UI!
+                postContent = `DEBUG: Content missing. Available keys: ${Object.keys(post).join(', ')}`;
             }
 
-            // Generate Outline
-            const outline = await generatePostOutline(postContent);
+            // Generate Outline (Skip if debug)
+            const outline = postContent.startsWith("DEBUG")
+                ? "Debug Outline\n\n- Key analysis"
+                : await generatePostOutline(postContent);
 
-            // Regenerate using custom_instructions (tone of voice)
-            const rewritten = await regeneratePost(outline || '', postContent, customInstructions);
+            // Regenerate or pass through debug info
+            const rewritten = postContent.startsWith("DEBUG")
+                ? postContent
+                : await regeneratePost(outline || '', postContent, customInstructions);
 
             // Save to DB
             const { error: insertError } = await supabase.from('posts').insert({
                 user_id: user.id,
                 original_post_id: post.id || 'unknown',
-                original_url: post.url || post.postUrl || '',
+                original_url: post.url || post.postUrl || post.socialUrl || '',
                 original_content: postContent,
-                original_author: post.author?.name || 'Unknown',
+                original_author: post.author?.name || post.authorName || 'Unknown',
                 generated_content: rewritten,
                 type: source === 'keywords' ? 'research' : 'parasite',
                 status: 'idea',
                 meta: {
                     outline,
                     engagement: {
-                        likes: post.likesCount,
-                        comments: post.commentsCount,
-                        shares: post.sharesCount
-                    }
+                        likes: post.likesCount || post.likes || 0,
+                        comments: post.commentsCount || post.comments || 0,
+                        shares: post.sharesCount || post.shares || 0
+                    },
+                    raw_debug: post // Saving the whole object in meta to inspect in Supabase if needed
                 }
             });
 
