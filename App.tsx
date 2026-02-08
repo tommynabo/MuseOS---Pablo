@@ -91,46 +91,21 @@ const App: React.FC = () => {
 
     if (session?.user) {
       try {
-        // First check if profile exists
-        const { data: existing, error: checkError } = await supabase
+        const { error } = await supabase
           .from('profiles')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .single();
-
-        let error;
-
-        if (existing) {
-          // UPDATE
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              tone: updated.tone,
-              niche_keywords: updated.nicheKeywords,
-              custom_instructions: updated.customInstructions,
-              role: updated.role,
-              updated_at: new Date().toISOString()
-            })
-            .eq('user_id', session.user.id);
-          error = updateError;
-        } else {
-          // INSERT (first time)
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: session.user.id, // Use user_id as ID to satisfy FK constraint
-              user_id: session.user.id,
-              tone: updated.tone,
-              niche_keywords: updated.nicheKeywords,
-              custom_instructions: updated.customInstructions,
-              role: updated.role
-            });
-          error = insertError;
-        }
+          .upsert({
+            id: session.user.id, // ID must equal user_id due to DB constraint
+            user_id: session.user.id,
+            tone: updated.tone,
+            niche_keywords: updated.nicheKeywords,
+            custom_instructions: updated.customInstructions,
+            role: updated.role,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'id' });
 
         if (error) {
           console.error("Error saving profile:", error);
-          alert(`Error al guardar: ${error.message || JSON.stringify(error)}`);
+          alert(`Error al guardar: ${error.message}`);
         }
       } catch (err: any) {
         console.error("Unexpected error:", err);
