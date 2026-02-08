@@ -345,24 +345,16 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
             // Different Apify actors use different field names (text, postText, content, description)
             let postContent = post.text || post.postText || post.content || post.description;
 
-            // Debug Log
-            console.log(`Processing post ID: ${post.id || 'unknown'}`, { hasContent: !!postContent, keys: Object.keys(post) });
-
             if (!postContent) {
-                console.log("Missing content. Using debug fallback.");
-                // FALLBACK: Inject keys into content so we can see them in the UI!
-                postContent = `DEBUG: Content missing. Available keys: ${Object.keys(post).join(', ')}`;
+                console.log(`Skipping post ID ${post.id} due to missing content.`);
+                continue;
             }
 
-            // Generate Outline (Skip if debug)
-            const outline = postContent.startsWith("DEBUG")
-                ? "Debug Outline\n\n- Key analysis"
-                : await generatePostOutline(postContent);
+            // Generate Outline
+            const outline = await generatePostOutline(postContent);
 
-            // Regenerate or pass through debug info
-            const rewritten = postContent.startsWith("DEBUG")
-                ? postContent
-                : await regeneratePost(outline || '', postContent, customInstructions);
+            // Regenerate using custom_instructions (tone of voice)
+            const rewritten = await regeneratePost(outline || '', postContent, customInstructions);
 
             // Save to DB
             const { error: insertError } = await supabase.from('posts').insert({
