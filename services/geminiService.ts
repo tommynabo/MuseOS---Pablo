@@ -93,3 +93,12 @@ export const addCreator = async (creator: { name: string, linkedinUrl: string })
   });
   return response.json();
 };
+
+export const deleteCreator = async (id: number) => {
+  const headers = await getHeaders();
+  const response = await fetch(`${API_URL}/creators/${id}`, {
+    method: 'DELETE',
+    headers
+  });
+  return response.json();
+};

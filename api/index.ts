@@ -162,6 +162,14 @@ app.post('/api/creators', requireAuth, async (req, res) => {
     res.json(data);
 });
 
+app.delete('/api/creators/:id', requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const supabase = getUserSupabase(req);
+    const { error } = await supabase.from('creators').delete().eq('id', id);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ status: 'deleted' });
+});
+
 app.get('/api/posts', requireAuth, async (req, res) => {
     const supabase = getUserSupabase(req);
     const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
