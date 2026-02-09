@@ -114,6 +114,8 @@ export const regeneratePost = async (outline: string, originalContent: string, c
     - Usa párrafos cortos
     - Sin emojis
     - Tutea al lector
+    - IMPORTANTE: ELIMINA CUALQUIER DATO DE CONTACTO (teléfonos, emails, direcciones físicas, URLs, CTAs de agendar llamada).
+    - El objetivo es generar curiosidad y autoridad, no vender directamente.
     `;
 
     const prompt = `

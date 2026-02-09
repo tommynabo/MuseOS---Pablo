@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Stats, ContentPiece } from '../types';
 import IdeaCard from './IdeaCard';
-import { PenTool, CheckCircle, Clock, Search, Bell, Sparkles, Zap, TrendingUp, Users, Hash, ChevronRight, Calendar } from 'lucide-react';
+import { PenTool, CheckCircle, Clock, Search, Bell, Sparkles, Zap, TrendingUp, Users, Hash, ChevronRight, Calendar, ExternalLink } from 'lucide-react';
 
 interface DashboardProps {
     stats: Stats;
@@ -349,7 +349,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                         {/* DRAFTS SECTION */}
-                        <div 
+                        <div
                             className="bg-gray-50 rounded-[32px] p-6 border border-gray-100/50 transition-colors"
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
@@ -373,7 +373,21 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                                     >
                                         <div className="flex justify-between items-start mb-3">
                                             <span className="bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">Editando</span>
-                                            <ChevronRight size={16} className="text-gray-300 group-hover:text-indigo-500 transition-colors" />
+                                            <div className="flex items-center gap-2">
+                                                {item.sourceUrl && (
+                                                    <a
+                                                        href={item.sourceUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="text-gray-300 hover:text-blue-500 transition-colors"
+                                                        title="Ver fuente"
+                                                    >
+                                                        <ExternalLink size={14} />
+                                                    </a>
+                                                )}
+                                                <ChevronRight size={16} className="text-gray-300 group-hover:text-indigo-500 transition-colors" />
+                                            </div>
                                         </div>
                                         <h3 className="font-bold text-gray-800 text-sm mb-2 leading-snug group-hover:text-indigo-700 transition-colors">{item.generatedDraft.hook}</h3>
                                         <p className="text-xs text-gray-500 line-clamp-2 mb-3 leading-relaxed">{item.generatedDraft.body}</p>
@@ -390,7 +404,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                         </div>
 
                         {/* READY SECTION */}
-                        <div 
+                        <div
                             className="bg-gray-50 rounded-[32px] p-6 border border-gray-100/50 transition-colors"
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
@@ -405,8 +419,8 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                             />
                             <div className="space-y-4">
                                 {ready.map(item => (
-                                    <div 
-                                        key={item.id} 
+                                    <div
+                                        key={item.id}
                                         draggable
                                         onDragStart={() => handleDragStart(item, 'approved')}
                                         className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm opacity-80 hover:opacity-100 transition-all cursor-move"

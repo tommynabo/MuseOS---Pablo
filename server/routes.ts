@@ -66,7 +66,7 @@ function extractPostText(post: ApifyPost): string {
 }
 
 function getMetric(post: ApifyPost, metric: 'likes' | 'comments' | 'shares'): number {
-    switch(metric) {
+    switch (metric) {
         case 'likes':
             return post.likesCount || post.likesNumber || 0;
         case 'comments':
@@ -79,29 +79,29 @@ function getMetric(post: ApifyPost, metric: 'likes' | 'comments' | 'shares'): nu
 function filterSensitiveData(text: string): string {
     // Remove phone numbers (various formats)
     let filtered = text.replace(/(\+?\d{1,3}[\s.-]?)?\(?\d{2,4}\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}/g, '[TELÉFONO]');
-    
+
     // Remove WhatsApp numbers
     filtered = filtered.replace(/\(?WhatsApp\)?[\s]?[\d\s\-\(\)]+/gi, '[WHATSAPP]');
-    
+
     // Remove email addresses
     filtered = filtered.replace(/[\w\.-]+@[\w\.-]+\.\w+/g, '[EMAIL]');
-    
+
     // Remove URLs (www.*, http://*, https://)
     filtered = filtered.replace(/https?:\/\/[^\s]+|www\.[^\s]+/gi, '[WEBSITE]');
-    
+
     // Remove physical addresses (look for patterns like "Rua", "Avenida", "Av.", etc.)
-    filtered = filtered.replace(/(?:Rua|Avenida|Av\.|Calle|Street|Rute|nº|Número|Loja|Edifício|Moçambique|Portugal|Brasil|España|México|Argentina)\s+[^\.]*\.?/gi, (match) => {
+    filtered = filtered.replace(/(?:Rua|Avenida|Av\.|Calle|Street|Rute|nº|Número|Loja|Edifício|Moçambique|Portugal|Brasil|España|México|Argentina|Clínica|Shopping|Centro Comercial|Piso|Andar)\s+[^\.]*\.?/gi, (match) => {
         // Only remove if it looks like an address (contains numbers)
         if (/\d/.test(match)) {
             return '[DIRECCIÓN]';
         }
         return match;
     });
-    
+
     // Remove geographic coordinates and specific location identifiers
     filtered = filtered.replace(/📍\s*[^[\n]*/gi, '[UBICACIÓN]');
     filtered = filtered.replace(/Maputo|Lisboa|Porto|Rio de Janeiro|São Paulo/gi, '[CIUDAD]');
-    
+
     return filtered.trim();
 }
 
@@ -334,7 +334,7 @@ router.patch('/posts/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     const supabase = getUserSupabase(req);
-    
+
     if (!['idea', 'drafted', 'approved', 'posted'].includes(status)) {
         res.status(400).json({ error: "Invalid status" });
         return;
@@ -345,7 +345,7 @@ router.patch('/posts/:id', requireAuth, async (req, res) => {
         .eq('id', id)
         .select()
         .single();
-    
+
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
 });
