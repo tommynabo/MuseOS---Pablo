@@ -203,4 +203,3 @@ const Editor: React.FC<EditorProps> = ({ content, clientProfile, onClose, onSave
 };
 
 export default Editor;
-```
