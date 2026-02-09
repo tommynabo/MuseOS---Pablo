@@ -72,7 +72,7 @@ function extractPostText(post: ApifyPost): string {
 }
 
 function getMetric(post: ApifyPost, metric: 'likes' | 'comments' | 'shares'): number {
-    switch(metric) {
+    switch (metric) {
         case 'likes':
             return post.likesCount || post.likesNumber || 0;
         case 'comments':
@@ -159,7 +159,7 @@ async function evaluatePostEngagement(posts: ApifyPost[]): Promise<ApifyPost[]> 
                     const scoreB = getMetric(b, 'likes') + getMetric(b, 'comments') * 2 + getMetric(b, 'shares') * 3;
                     return scoreB - scoreA;
                 });
-            
+
             // Deduplicate by URL
             const existingIds = new Set(selectedPosts.map(p => p.url).filter(Boolean));
             for (const p of sorted) {
@@ -202,16 +202,16 @@ async function generatePostOutline(content: string): Promise<string> {
 function filterSensitiveData(text: string): string {
     // Remove phone numbers (various formats)
     let filtered = text.replace(/(\+?\d{1,3}[\s.-]?)?\(?\d{2,4}\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}/g, '[TELÉFONO]');
-    
+
     // Remove WhatsApp numbers
     filtered = filtered.replace(/\(?WhatsApp\)?[\s]?[\d\s\-\(\)]+/gi, '[WHATSAPP]');
-    
+
     // Remove email addresses
     filtered = filtered.replace(/[\w\.-]+@[\w\.-]+\.\w+/g, '[EMAIL]');
-    
+
     // Remove URLs (www.*, http://*, https://)
     filtered = filtered.replace(/https?:\/\/[^\s]+|www\.[^\s]+/gi, '[WEBSITE]');
-    
+
     // Remove physical addresses (look for patterns like "Rua", "Avenida", "Av.", etc.)
     filtered = filtered.replace(/(?:Rua|Avenida|Av\.|Calle|Street|Rua|Rute|nº|Número|Loja|Edifício|Moçambique|Portugal|Brasil|España|México|Argentina)\s+[^\.]*\.?/gi, (match) => {
         // Only remove if it looks like an address (contains numbers)
@@ -220,11 +220,11 @@ function filterSensitiveData(text: string): string {
         }
         return match;
     });
-    
+
     // Remove geographic coordinates and specific location identifiers
     filtered = filtered.replace(/📍\s*[^[\n]*/gi, '[UBICACIÓN]');
     filtered = filtered.replace(/Maputo|Lisboa|Porto|Rio de Janeiro|São Paulo/gi, '[CIUDAD]');
-    
+
     return filtered.trim();
 }
 
@@ -283,7 +283,7 @@ app.patch('/api/posts/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     const supabase = getUserSupabase(req);
-    
+
     if (!['idea', 'drafted', 'approved', 'posted'].includes(status)) {
         return res.status(400).json({ error: "Invalid status" });
     }
@@ -293,9 +293,53 @@ app.patch('/api/posts/:id', requireAuth, async (req, res) => {
         .eq('id', id)
         .select()
         .single();
-    
+
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
+});
+
+app.delete('/api/posts/:id', requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const supabase = getUserSupabase(req);
+    const { error } = await supabase.from('posts').delete().eq('id', id);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ message: "Post deleted successfully" });
+});
+
+app.post('/api/rewrite', requireAuth, async (req, res) => {
+    const { text, profile, instruction } = req.body;
+
+    if (!text) return res.status(400).json({ error: "Text is required" });
+
+    let prompt = "";
+    const tone = profile?.custom_instructions || "profesional y directo";
+
+    switch (instruction) {
+        case 'shorten':
+            prompt = `Actúa como un editor experto. Reescribe el siguiente texto para que sea más conciso y directo, eliminando el "fluff" pero manteniendo el mensaje principal. \n\nTexto: "${text}"`;
+            break;
+        case 'punchier':
+            prompt = `Actúa como un copywriter viral. Reescribe el siguiente texto para que tenga más impacto (punch), usando verbos de acción y oraciones poderosas. Tono: ${tone}. \n\nTexto: "${text}"`;
+            break;
+        case 'add_fact':
+            prompt = `Añade un dato curioso o estadístico relevante (puede ser general) que refuerce el siguiente punto, integrándolo naturalmente en el texto. \n\nTexto: "${text}"`;
+            break;
+        case 'rewrite':
+        default:
+            prompt = `Reescribe el siguiente texto mejorando la claridad y el flujo, adaptándolo al tono: ${tone}. \n\nTexto: "${text}"`;
+            break;
+    }
+
+    try {
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{ role: "user", content: prompt }],
+        });
+        res.json({ result: response.choices[0].message.content });
+    } catch (error: any) {
+        console.error("Rewrite error:", error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // ===== MAIN WORKFLOW =====
