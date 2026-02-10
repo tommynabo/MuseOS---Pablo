@@ -8,11 +8,19 @@ export interface ViralMetrics {
   shares?: number;
 }
 
+export interface ViralityAnalysis {
+  viralityReason: string; // Por qué podría volverse viral
+  bottleneck: string; // El cuello de botella del post - qué lo limita
+  engagement_trigger: string; // Qué genera engagement
+  audience_relevance: string; // Relevancia para la audiencia
+}
+
 export interface GeneratedDraft {
   hook: string;
   body: string;
   cta: string;
   researchNotes: string[];
+  viralityAnalysis?: ViralityAnalysis; // Nuevo: análisis profesional de viralidad
 }
 
 export interface ContentPiece {

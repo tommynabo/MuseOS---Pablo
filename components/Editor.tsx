@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ContentPiece, ClientProfile } from '../types';
-import { ArrowLeft, Save, CheckCircle, Wand2, Scissors, Zap, BookOpen, ChevronRight, Copy, ChevronDown, ChevronUp, Trash2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, Wand2, Scissors, Zap, BookOpen, ChevronRight, Copy, ChevronDown, ChevronUp, Trash2, ExternalLink, AlertCircle, Users } from 'lucide-react';
 import { generateRefinedDraft } from '../services/geminiService';
 
 interface EditorProps {
@@ -90,52 +90,141 @@ const Editor: React.FC<EditorProps> = ({ content, clientProfile, onClose, onSave
       <div className="flex-1 flex overflow-hidden">
 
         {/* Left: Context / Source Material */}
-        <div className="w-[350px] hidden lg:flex flex-col border-r border-gray-200 bg-white h-full overflow-y-auto custom-scrollbar">
-          <div className="p-6">
-            <h3 className="font-bold text-gray-900 text-sm mb-4 flex items-center gap-2">
-              <BookOpen size={16} className="text-indigo-600" />
-              Fuente Original
-            </h3>
+        <div className="w-[400px] hidden lg:flex flex-col border-r border-gray-200 bg-gradient-to-b from-white to-gray-50 h-full overflow-y-auto custom-scrollbar">
+          <div className="p-6 space-y-6">
+            {/* Header */}
+            <div>
+              <h3 className="font-bold text-gray-900 text-sm mb-1 flex items-center gap-2">
+                <BookOpen size={16} className="text-indigo-600" />
+                Fuente Original
+              </h3>
+              <p className="text-[10px] text-gray-400 ml-6">Contenido de inspiración</p>
+            </div>
 
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 mb-4">
-              {content.originalUrl ? (
-                <a
-                  href={content.originalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 bg-white border border-gray-200 hover:border-indigo-300 hover:text-indigo-600 text-gray-600 py-2.5 rounded-lg text-xs font-bold transition-all mb-4 shadow-sm"
+            {/* Link Button - Prominently Displayed */}
+            {content.originalUrl && (
+              <a
+                href={content.originalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between w-full p-3.5 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-200 transition-all border border-indigo-400 group"
+              >
+                <span className="flex items-center gap-2 font-bold text-sm">
+                  <ExternalLink size={16} />
+                  Ver Post Original
+                </span>
+                <span className="text-xs font-medium opacity-90">↗</span>
+              </a>
+            )}
+
+            {/* Original Text - Full Content */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Texto Original</label>
+              <div className="bg-white border-2 border-gray-200 rounded-2xl p-5 relative group">
+                {/* Quote Mark Decoration */}
+                <div className="absolute top-2 left-3 text-gray-200 text-3xl opacity-50 font-serif">"</div>
+                
+                {/* Actual Text - No Truncation */}
+                <p className="text-gray-700 text-sm leading-relaxed font-medium whitespace-pre-wrap pl-2 relative z-10 max-h-52 overflow-y-auto">
+                  {content.originalText}
+                </p>
+                
+                {/* Copy Button */}
+                <button
+                  onClick={copyToClipboard}
+                  className="absolute top-3 right-3 p-1.5 bg-gray-100 text-gray-400 hover:bg-indigo-100 hover:text-indigo-600 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                  title="Copiar texto"
                 >
-                  <ExternalLink size={14} />
-                  Ver Post en LinkedIn
-                </a>
-              ) : (
-                <div className="text-xs text-center text-gray-400 py-2 mb-2 italic">Link no disponible</div>
-              )}
-
-              <div className="relative">
-                <div className="absolute top-0 left-0 w-1 h-full bg-gray-200 rounded-full"></div>
-                <div className="pl-3 py-1">
-                  <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-wrap font-medium">
-                    "{content.originalText}"
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3 text-[10px] font-bold text-gray-400 uppercase text-right">
-                — {content.originalAuthor}
+                  <Copy size={14} />
+                </button>
               </div>
             </div>
 
+            {/* Author */}
+            {content.originalAuthor && (
+              <div className="bg-blue-50 rounded-xl p-3.5 border border-blue-100">
+                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Por</p>
+                <p className="text-sm font-bold text-gray-900">{content.originalAuthor}</p>
+              </div>
+            )}
+
+            {/* Metrics - if available */}
+            {content.viralMetrics && (
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Métricas de Viralidad</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {content.viralMetrics.likes > 0 && (
+                    <div className="bg-red-50 rounded-lg p-3 border border-red-100">
+                      <p className="text-[10px] text-red-600 font-bold uppercase">Likes</p>
+                      <p className="text-lg font-bold text-red-700">{content.viralMetrics.likes.toLocaleString()}</p>
+                    </div>
+                  )}
+                  {content.viralMetrics.comments > 0 && (
+                    <div className="bg-green-50 rounded-lg p-3 border border-green-100">
+                      <p className="text-[10px] text-green-600 font-bold uppercase">Comentarios</p>
+                      <p className="text-lg font-bold text-green-700">{content.viralMetrics.comments.toLocaleString()}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Research Notes - Improved */}
             {content.generatedDraft.researchNotes.length > 0 && (
-              <div className="mt-6">
-                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Notas de Análisis</h4>
-                <ul className="space-y-2">
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Análisis de IA</label>
+                <div className="space-y-2">
                   {content.generatedDraft.researchNotes.map((note, idx) => (
-                    <li key={idx} className="flex gap-2 text-xs text-gray-600 bg-yellow-50/50 p-2.5 rounded-lg border border-yellow-100/50">
-                      <span className="text-yellow-500 mt-0.5">•</span>
-                      {note}
-                    </li>
+                    <div key={idx} className="flex gap-3 text-xs text-gray-700 bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+                      <span className="text-yellow-600 font-bold flex-shrink-0 mt-0.5">➜</span>
+                      <span className="leading-relaxed">{note}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Virality Analysis - Professional */}
+            {content.generatedDraft.viralityAnalysis && (
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Análisis de Viralidad Profesional</label>
+                <div className="space-y-3">
+                  {/* Virality Reason */}
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border border-amber-200">
+                    <div className="flex gap-2 items-start mb-1">
+                      <Zap size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">Por qué será viral</p>
+                    </div>
+                    <p className="text-sm text-gray-800 leading-relaxed ml-6">{content.generatedDraft.viralityAnalysis.viralityReason}</p>
+                  </div>
+
+                  {/* Bottleneck */}
+                  <div className="bg-gradient-to-r from-red-50 to-rose-50 rounded-lg p-4 border border-red-200">
+                    <div className="flex gap-2 items-start mb-1">
+                      <AlertCircle size={14} className="text-red-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-[11px] font-bold text-red-800 uppercase tracking-wider">Cuello de botella</p>
+                    </div>
+                    <p className="text-sm text-gray-800 leading-relaxed ml-6">{content.generatedDraft.viralityAnalysis.bottleneck}</p>
+                  </div>
+
+                  {/* Engagement Trigger */}
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                    <div className="flex gap-2 items-start mb-1">
+                      <Sparkles size={14} className="text-green-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-[11px] font-bold text-green-800 uppercase tracking-wider">Trigger de engagement</p>
+                    </div>
+                    <p className="text-sm text-gray-800 leading-relaxed ml-6">{content.generatedDraft.viralityAnalysis.engagement_trigger}</p>
+                  </div>
+
+                  {/* Audience Relevance */}
+                  <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
+                    <div className="flex gap-2 items-start mb-1">
+                      <Users size={14} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-[11px] font-bold text-blue-800 uppercase tracking-wider">Relevancia de audiencia</p>
+                    </div>
+                    <p className="text-sm text-gray-800 leading-relaxed ml-6">{content.generatedDraft.viralityAnalysis.audience_relevance}</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

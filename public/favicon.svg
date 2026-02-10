@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <style>
+      @keyframes pulse-expand {
+        0%, 100% { r: 55px; opacity: 0.3; }
+        50% { r: 70px; opacity: 0; }
+      }
+      @keyframes spin-slow {
+        0% { transform: rotate(0deg); }
+        360% { transform: rotate(360deg); }
+      }
+      .pulse { animation: pulse-expand 3s ease-out infinite; }
+      .container { transform-origin: 100px 100px; }
+    </style>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="200" fill="#f8f9fc" rx="50"/>
+  
+  <!-- Animated Pulse Rings -->
+  <g class="container">
+    <circle cx="100" cy="100" r="55" fill="none" stroke="#6366f1" stroke-width="2" class="pulse" />
+  </g>
+  
+  <!-- Core Circle with Gradient -->
+  <circle cx="100" cy="100" r="50" fill="url(#grad)" />
+  
+  <!-- Creative Inner Element - Abstract Spark -->
+  <g fill="white">
+    <!-- Top spark -->
+    <path d="M 100 45 L 98 65 L 100 70 L 102 65 Z" opacity="0.9"/>
+    <!-- Center dot -->
+    <circle cx="100" cy="100" r="12" opacity="0.95"/>
+    <!-- Bottom spark -->
+    <path d="M 100 155 L 98 135 L 100 130 L 102 135 Z" opacity="0.85"/>
+    <!-- Left spark -->
+    <path d="M 45 100 L 65 98 L 70 100 L 65 102 Z" opacity="0.85"/>
+    <!-- Right spark -->
+    <path d="M 155 100 L 135 98 L 130 100 L 135 102 Z" opacity="0.85"/>
+  </g>
+  
+  <!-- Shine/Gloss Effect -->
+  <ellipse cx="85" cy="80" rx="20" ry="18" fill="white" opacity="0.15"/>
+</svg>

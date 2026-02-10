@@ -269,37 +269,60 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                         </div>
 
                         <div className="space-y-4">
-                            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex items-center justify-between">
-                                <div>
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Próxima Tanda</p>
-                                    <p className="text-lg font-bold text-gray-900">14h 30m</p>
+                            {/* Next Batch Status - Real */}
+                            <div className={`bg-white border rounded-2xl p-4 shadow-sm transition-all ${schedActive ? 'border-green-200 bg-green-50/30' : 'border-gray-100 bg-gray-50/30'}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Estado del Piloto</p>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${schedActive ? 'text-green-600 bg-green-50 border border-green-200' : 'text-orange-600 bg-orange-50 border border-orange-200'}`}>
+                                        {schedActive ? '✓ Activo' : '⏸ Pausado'}
+                                    </span>
                                 </div>
-                                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
+                                {schedActive ? (
+                                    <>
+                                        <p className="text-sm font-bold text-gray-900 mb-1">Próxima ejecución</p>
+                                        <p className="text-2xl font-bold text-green-600 mb-2">{schedTime}</p>
+                                        <p className="text-xs text-gray-600">Volumen: <span className="font-bold text-gray-900">{schedCount} ideas</span> • Fuente: <span className="font-bold text-gray-900">{schedSource === 'keywords' ? 'Keywords' : 'Creadores'}</span></p>
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-gray-600 py-2">El piloto automático está desactivado. Actívalo para programar generación automática.</p>
+                                )}
                             </div>
 
+                            {/* Active Content Metrics */}
                             <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
                                 <div className="flex justify-between items-center mb-3">
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Fuentes Activas</p>
-                                    <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Online</span>
+                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Contenido Procesado</p>
+                                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Hoy</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    {[1, 2, 3].map(i => (
-                                        <div key={i} className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white shadow-sm flex items-center justify-center text-[10px] font-bold text-gray-500">
-                                            {i === 1 ? 'S' : i === 2 ? 'E' : 'R'}
-                                        </div>
-                                    ))}
-                                    <span className="text-xs text-gray-400 ml-1">+4 más</span>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="text-center">
+                                        <p className="text-xl font-bold text-indigo-600">{newIdeas.length}</p>
+                                        <p className="text-[10px] text-gray-500 mt-0.5">Ideas</p>
+                                    </div>
+                                    <div className="text-center border-l border-r border-gray-100">
+                                        <p className="text-xl font-bold text-blue-600">{drafts.length}</p>
+                                        <p className="text-[10px] text-gray-500 mt-0.5">Borradores</p>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-xl font-bold text-green-600">{ready.length}</p>
+                                        <p className="text-[10px] text-gray-500 mt-0.5">Listos</p>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="pt-2">
-                                <div className="flex justify-between text-xs mb-1">
-                                    <span className="text-gray-500">Cuota de API</span>
-                                    <span className="font-bold text-gray-900">24%</span>
+                            {/* Generation Progress */}
+                            <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                                <div className="flex justify-between items-center mb-3">
+                                    <p className="text-[10px] text-gray-400 uppercase font-bold">Progreso de Sesión</p>
+                                    <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">{((drafts.length + ready.length) / (newIdeas.length + drafts.length + ready.length) * 100 || 0).toFixed(0)}%</span>
                                 </div>
-                                <div className="w-full bg-gray-100 rounded-full h-1.5">
-                                    <div className="bg-indigo-600 h-1.5 rounded-full w-1/4"></div>
+                                <div className="w-full bg-gray-100 rounded-full h-2">
+                                    <div 
+                                        className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all duration-500"
+                                        style={{ width: `${((drafts.length + ready.length) / (newIdeas.length + drafts.length + ready.length) * 100 || 0)}%` }}
+                                    ></div>
                                 </div>
+                                <p className="text-xs text-gray-600 mt-2">De idea a contenido listo para publicar</p>
                             </div>
                         </div>
                     </div>

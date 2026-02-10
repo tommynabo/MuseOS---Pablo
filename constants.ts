@@ -55,6 +55,12 @@ export const INITIAL_CONTENT: ContentPiece[] = [
       body: "En las relaciones, a menudo confundimos el control con el cuidado. Intentamos moldear a alguien en una versión que nos haga sentir seguros a *nosotros*.\n\nPero la verdadera conexión ocurre cuando soltamos el resultado.\n\nCuando dejamos de intentar ser el 'líder' de la relación y empezamos a ser un compañero en el proceso de sanación.",
       cta: "¿Cuándo fue la última vez que escuchaste sin intentar resolver el problema?",
       researchNotes: ["Referencia: Teoría del Apego (Bowlby)", "Concepto: Sostener el espacio"],
+      viralityAnalysis: {
+        viralityReason: "Las personas buscan validación en relaciones. Este post toca la inseguridad universal de 'no ser suficiente' y ofrece perspectiva reconfortante. El reframing de 'control vs cuidado' es transversalmente aplicable (relaciones de pareja, familia, liderazgo).",
+        bottleneck: "El público necesita conexión personal con el contenido. Sin un gancho emocional fuerte en las primeras 2 líneas, se pierde. El tono reflexivo puede resultar demasiado suave para algoritmos que favorecen contenido provocador.",
+        engagement_trigger: "Las preguntas reflexivas generan comentarios. Los lectores quieren compartir sus experiencias de relaciones insanas. El lenguaje inclusivo ('nosotros') genera sentido de comunidad.",
+        audience_relevance: "Máxima relevancia para personas en relaciones complicadas (25-45 años, predominante femenino). Excelente para profesionales en desarrollo personal, coaches, y terapeutas."
+      }
     },
   },
   // Scenario B: Financial
@@ -72,6 +78,12 @@ export const INITIAL_CONTENT: ContentPiece[] = [
       body: "Muchos autónomos siguen deduciendo el 100% de sus suministros domésticos. Esto es un error que te puede costar una inspección.\n\nLa ley actual solo permite deducir el 30% de la proporción de metros cuadrados afectos a la actividad.\n\nEjemplo: Si tu despacho es el 10% de tu casa, solo puedes deducir el 30% de ese 10%.",
       cta: "Comenta 'AUDITORÍA' y te envío mi checklist de gastos deducibles 2024.",
       researchNotes: ["Ley 35/2006 IRPF", "Consulta Vinculante V0000-00"],
+      viralityAnalysis: {
+        viralityReason: "El contenido genera miedo controlado (fear appeal) que convierte lectores en savers/sharers. Los autónomos comparten para proteger a colegas. La urgencia ('Hacienda está vigilando') activa el FOMO fiscal. Los detalles específicos (leyes, porcentajes) generan credibilidad que impulsa shares.",
+        bottleneck: "Aunque genera urgencia, puede resultar cínica o alarmista si no se incluye el contexto legal completo. Las personas pueden dudar si realmente es tan grave. Falta la esperanza/solución clara en el gancho inicial, lo que limita engagement positivo.",
+        engagement_trigger: "El CTA 'comenta AUDITORÍA' genera engagement directo. Los autónomos comentan por miedo y por ayudar a otros. La especificidad legal (leyes exactas) genera comentarios de verificación y debate.",
+        audience_relevance: "Altamente relevante para autónomos (100% target). Especialmente para freelancers, consultores, y pequeños negocios. Máximo engagement en LinkedIn España. Influencia media en otros países."
+      }
     },
   },
 ];

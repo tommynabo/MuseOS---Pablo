@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Sparkles, Quote, ExternalLink, Trash2 } from 'lucide-react';
+import { ArrowRight, Sparkles, Quote, ExternalLink, Trash2, Zap, AlertCircle } from 'lucide-react';
 import { ContentPiece } from '../types';
 
 interface IdeaCardProps {
@@ -53,14 +53,34 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ item, onClick, onDelete }) => {
         </div>
       </div>
 
-      {/* Hook Preview */}
+      {/* Hook Preview + Virality Analysis */}
       <div className="bg-gradient-to-br from-indigo-50/50 to-white rounded-xl p-4 border border-indigo-50 group-hover:border-indigo-100 transition-colors">
         <h3 className="text-[10px] font-bold text-indigo-500 mb-2 flex items-center gap-1.5">
           <Sparkles size={12} /> SUGERENCIA IA
         </h3>
-        <p className="text-gray-900 font-bold text-sm leading-snug">
+        <p className="text-gray-900 font-bold text-sm leading-snug mb-3">
           {item.generatedDraft.hook}
         </p>
+
+        {/* Virality Analysis - Professional */}
+        {item.generatedDraft.viralityAnalysis && (
+          <div className="mt-3 pt-3 border-t border-indigo-100 space-y-2">
+            <div className="flex gap-2 items-start">
+              <Zap size={12} className="text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[10px] font-bold text-amber-700">Potencial Viral:</p>
+                <p className="text-[11px] text-gray-700 leading-tight">{item.generatedDraft.viralityAnalysis.viralityReason}</p>
+              </div>
+            </div>
+            <div className="flex gap-2 items-start">
+              <AlertCircle size={12} className="text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[10px] font-bold text-red-700">Cuello de Botella:</p>
+                <p className="text-[11px] text-gray-700 leading-tight">{item.generatedDraft.viralityAnalysis.bottleneck}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {onDelete && (
