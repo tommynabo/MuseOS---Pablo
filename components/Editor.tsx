@@ -87,7 +87,7 @@ const Editor: React.FC<EditorProps> = ({ content, clientProfile, onClose, onSave
       </div>
 
       {/* Main Content - NEW LAYOUT: 70% Left (Source), 30% Right (Editor) */}
-      <div className="flex-1 flex overflow-hidden"
+      <div className="flex-1 flex overflow-hidden">
 
         {/* Left: Context / Source Material - 70% EXPANDED */}
         <div className="w-7/12 flex flex-col border-r border-gray-200 bg-gradient-to-b from-white to-gray-50 h-full overflow-y-auto custom-scrollbar">
