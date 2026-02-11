@@ -118,7 +118,7 @@ async function searchLinkedInPosts(keywords: string[], maxPosts = 5): Promise<Ap
     if (!apifyClient) { console.error("Apify token missing"); return []; }
     try {
         const run = await apifyClient.actor("buIWk2uOUzTmcLsuB").call({
-            maxPosts, maxReactions: 1, scrapeComments: true, scrapeReactions: true,
+            maxPosts, maxReactions: 0, scrapeComments: false, scrapeReactions: false,
             searchQueries: keywords, sortBy: "relevance"
         });
         const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
@@ -331,8 +331,8 @@ async function executeWorkflowGenerate(req: Request, res: Response) {
 
     if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-    const MAX_ROUNDS = 3;        // Max fetch rounds to prevent infinite loops
-    const BUFFER_MULTIPLIER = 5; // Fetch 5× more than needed from Apify
+    const MAX_ROUNDS = 2;        // Max 2 rounds to stay within Vercel 60s timeout
+    const BUFFER_MULTIPLIER = 2; // Fetch 2× more than needed from Apify
     const targetCount = Math.min(Number(count) || 1, 10); // Cap at 10
 
     try {
@@ -355,7 +355,7 @@ async function executeWorkflowGenerate(req: Request, res: Response) {
             const expandedLists = await Promise.all(activeKeywords.map((k: string) => expandSearchQuery(k)));
             console.log('[WORKFLOW] Expanded queries:', expandedLists);
             const rawQueries = [...new Set([...activeKeywords, ...expandedLists.flat()])];
-            searchQueries = rawQueries.filter(q => typeof q === 'string' && q.trim().length > 0).slice(0, 5);
+            searchQueries = rawQueries.filter(q => typeof q === 'string' && q.trim().length > 0).slice(0, 3); // Max 3 queries to avoid Vercel timeout
             console.log('[WORKFLOW] Final search queries:', searchQueries);
         } else {
             const { data: creators } = await supabase.from('creators').select('linkedin_url');
@@ -375,8 +375,8 @@ async function executeWorkflowGenerate(req: Request, res: Response) {
             const remaining = targetCount - savedResults.length;
             if (remaining <= 0) break; // Target met! 🎯
 
-            const postsPerQuery = Math.max(2, remaining * BUFFER_MULTIPLIER); // Bigger buffer each round
-            console.log(`[WORKFLOW] Round ${round + 1}/${MAX_ROUNDS}: need ${remaining} more, fetching ${postsPerQuery} per query`);
+            const postsPerQuery = Math.min(5, Math.max(2, remaining * BUFFER_MULTIPLIER)); // Cap at 5 posts per query to stay fast
+            console.log(`[WORKFLOW] Round ${round + 1}/${MAX_ROUNDS}: need ${remaining} more, fetching ${postsPerQuery} per query (${searchQueries.length || creatorUrls.length} queries)`);
 
             // 1. FETCH (buffer)
             let roundPosts: ApifyPost[] = [];
