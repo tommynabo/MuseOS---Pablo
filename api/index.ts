@@ -365,7 +365,7 @@ router.get('/health', (_, res) => res.json({ status: 'ok', time: new Date().toIS
 
 router.get('/creators', requireAuth, async (req, res) => {
     const supabase = getUserSupabase(req);
-    const { data, error } = await supabase.from('creators').select('*');
+    const { data, error } = await supabase.from('creators_pablo').select('*');
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
 });
@@ -376,7 +376,7 @@ router.post('/creators', requireAuth, async (req, res) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-    const { data, error } = await supabase.from('creators')
+    const { data, error } = await supabase.from('creators_pablo')
         .insert({ user_id: user.id, name, linkedin_url: linkedinUrl, headline })
         .select().single();
     if (error) return res.status(500).json({ error: error.message });
@@ -386,14 +386,14 @@ router.post('/creators', requireAuth, async (req, res) => {
 router.delete('/creators/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const supabase = getUserSupabase(req);
-    const { error } = await supabase.from('creators').delete().eq('id', id);
+    const { error } = await supabase.from('creators_pablo').delete().eq('id', id);
     if (error) return res.status(500).json({ error: error.message });
     res.json({ status: 'deleted' });
 });
 
 router.get('/posts', requireAuth, async (req, res) => {
     const supabase = getUserSupabase(req);
-    const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('posts_pablo').select('*').order('created_at', { ascending: false });
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
 });
@@ -402,7 +402,7 @@ router.patch('/posts/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     const supabase = getUserSupabase(req);
-    const { data, error } = await supabase.from('posts').update({ status }).eq('id', id).select().single();
+    const { data, error } = await supabase.from('posts_pablo').update({ status }).eq('id', id).select().single();
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
 });
@@ -410,7 +410,7 @@ router.patch('/posts/:id', requireAuth, async (req, res) => {
 router.delete('/posts/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const supabase = getUserSupabase(req);
-    const { error } = await supabase.from('posts').delete().eq('id', id);
+    const { error } = await supabase.from('posts_pablo').delete().eq('id', id);
     if (error) return res.status(500).json({ error: error.message });
     res.json({ message: "Post deleted successfully" });
 });
@@ -447,7 +447,7 @@ async function executeWorkflowGenerate(req: Request, res: Response) {
     const targetCount = Math.min(Number(count) || 1, 10); // Cap at 10
 
     try {
-        const { data: profile } = await supabase.from('profiles').select('*').single();
+        const { data: profile } = await supabase.from('profiles_pablo').select('*').single();
         if (!profile) return res.status(400).json({ error: "Config needed." });
 
         const keywords = profile.niche_keywords || [];
@@ -469,7 +469,7 @@ async function executeWorkflowGenerate(req: Request, res: Response) {
             searchQueries = rawQueries.filter(q => typeof q === 'string' && q.trim().length > 0).slice(0, 3); // Max 3 queries to avoid Vercel timeout
             console.log('[WORKFLOW] Final search queries:', searchQueries);
         } else {
-            const { data: creators } = await supabase.from('creators').select('linkedin_url');
+            const { data: creators } = await supabase.from('creators_pablo').select('linkedin_url');
             if (!creators?.length) return res.status(400).json({ error: "No creators." });
             creatorUrls = creators
                 .map((c: any) => c.linkedin_url)
@@ -562,7 +562,7 @@ async function executeWorkflowGenerate(req: Request, res: Response) {
                 try { analysisObj = JSON.parse(structure); } catch { }
 
                 const postUrl = post.linkedinUrl || post.url || post.postUrl || post.socialUrl || '';
-                const insertResult = await supabase.from('posts').insert({
+                const insertResult = await supabase.from('posts_pablo').insert({
                     user_id: user.id,
                     original_post_id: post.id || 'unknown',
                     original_url: postUrl,

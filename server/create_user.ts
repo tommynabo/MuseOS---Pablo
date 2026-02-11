@@ -19,15 +19,15 @@ const createUser = async () => {
 
     console.log('User created successfully:', data.user);
 
-    // Create profile entry
+    // Create profile entry for Pablo
     const { error: profileError } = await supabaseAdmin
-        .from('profiles')
+        .from('profiles_pablo')
         .insert({
             id: data.user.id,
-            name: 'Tomas',
-            role: 'Admin',
+            name: 'Pablo',
+            role: 'Financial Advisor',
             tone: 'Professional',
-            custom_instructions: 'Default instructions'
+            custom_instructions: 'Asesor financiero corporativo especializado en empresas y ejecutivos. Tono profesional y cercano, enfocado en educación financiera y estrategias de inversión.'
         });
 
     if (profileError) {
