@@ -152,7 +152,9 @@ async function expandSearchQuery(topic: string): Promise<string[]> {
             response_format: { type: "json_object" }
         });
         const result = JSON.parse(response.choices[0].message.content || '{"queries": []}');
-        return result.queries.length > 0 ? result.queries : [topic];
+        const queries = Array.isArray(result.queries) ? result.queries : [topic];
+        // Ensure all items are strings to prevent "q.trim is not a function" error in Apify
+        return queries.filter((q: any) => typeof q === 'string' && q.trim().length > 0);
     } catch (e) { return [topic]; }
 }
 
@@ -337,14 +339,20 @@ async function executeWorkflowGenerate(req: Request, res: Response) {
             const activeKeywords = keywords.slice(0, 2); // Top 2
             const expandedLists = await Promise.all(activeKeywords.map((k: string) => expandSearchQuery(k)));
             // Fallback: make sure we have at least the original keyword if expansion returned nothing useful
-            const searchQueries = [...new Set([...activeKeywords, ...expandedLists.flat()])].slice(0, 3);
+            const rawQueries = [...new Set([...activeKeywords, ...expandedLists.flat()])];
+            const searchQueries = rawQueries.filter(q => typeof q === 'string' && q.trim().length > 0).slice(0, 3);
 
             const results = await Promise.all(searchQueries.map(q => searchLinkedInPosts([q], 2)));
             allPosts = results.flat();
         } else {
             const { data: creators } = await supabase.from('creators').select('linkedin_url');
             if (!creators?.length) return res.status(400).json({ error: "No creators." });
-            const urls = creators.slice(0, 5).map((c: any) => c.linkedin_url);
+            const urls = creators
+                .map((c: any) => c.linkedin_url)
+                .filter((u: any) => typeof u === 'string' && u.trim().length > 0)
+                .slice(0, 5);
+
+            if (urls.length === 0) return res.status(400).json({ error: "No valid creator URLs." });
             allPosts = await getCreatorPosts(urls, 5);
         }
 
