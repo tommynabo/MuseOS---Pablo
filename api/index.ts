@@ -6,21 +6,25 @@ import { ApifyClient } from 'apify-client';
 import OpenAI from 'openai';
 
 // ===== CONFIGURATION =====
-const SUPABASE_URL = process.env.SUPABASE_URL!;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const APIFY_TOKEN = process.env.APIFY_API_TOKEN!;
-const OPENAI_KEY = process.env.OPENAI_API_KEY!;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const APIFY_TOKEN = process.env.APIFY_API_TOKEN;
+const OPENAI_KEY = process.env.OPENAI_API_KEY;
 
 // ===== CLIENTS =====
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false }
-});
+// Initialize safely to prevent 500 startup crashes if env vars are missing
+const supabaseAdmin = (SUPABASE_URL && SUPABASE_SERVICE_KEY)
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false }
+    })
+    : null;
 
-const apifyClient = new ApifyClient({ token: APIFY_TOKEN });
+const apifyClient = APIFY_TOKEN ? new ApifyClient({ token: APIFY_TOKEN }) : null;
 
-const openai = new OpenAI({ apiKey: OPENAI_KEY });
+const openai = OPENAI_KEY ? new OpenAI({ apiKey: OPENAI_KEY }) : null;
 
 const getSupabaseUserClient = (accessToken: string) => {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) throw new Error("Supabase not configured on server");
     return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
         global: { headers: { Authorization: `Bearer ${accessToken}` } }
     });
@@ -105,6 +109,7 @@ function filterSensitiveData(text: string): string {
 
 // ===== APIFY FUNCTIONS =====
 async function searchLinkedInPosts(keywords: string[], maxPosts = 5): Promise<ApifyPost[]> {
+    if (!apifyClient) { console.error("Apify token missing"); return []; }
     try {
         const run = await apifyClient.actor("buIWk2uOUzTmcLsuB").call({
             maxPosts, maxReactions: 1, scrapeComments: true, scrapeReactions: true,
@@ -119,6 +124,7 @@ async function searchLinkedInPosts(keywords: string[], maxPosts = 5): Promise<Ap
 }
 
 async function getCreatorPosts(profileUrls: string[], maxPosts = 3): Promise<ApifyPost[]> {
+    if (!apifyClient) { console.error("Apify token missing"); return []; }
     try {
         const run = await apifyClient.actor("A3cAPGpwBEG8RJwse").call({
             includeQuotePosts: true, includeReposts: true, maxComments: 5, maxPosts,
@@ -137,6 +143,7 @@ async function getCreatorPosts(profileUrls: string[], maxPosts = 3): Promise<Api
 
 // 1. QUERY EXPANSION
 async function expandSearchQuery(topic: string): Promise<string[]> {
+    if (!openai) return [topic];
     try {
         const response = await openai.chat.completions.create({
             model: "gpt-4o",
@@ -152,6 +159,7 @@ async function expandSearchQuery(topic: string): Promise<string[]> {
 // 2. RELATIVE VIRALITY SCORING
 async function evaluatePostEngagement(posts: ApifyPost[]): Promise<ApifyPost[]> {
     if (posts.length === 0) return [];
+    if (!openai) return posts.slice(0, 5); // Fallback: return top posts if AI not available
 
     // Low floor to ensure we have candidates
     const meaningfulPosts = posts.filter(p => {
@@ -204,6 +212,7 @@ async function evaluatePostEngagement(posts: ApifyPost[]): Promise<ApifyPost[]> 
 
 // 3. STRUCTURE EXTRACTION
 async function extractPostStructure(content: string): Promise<string> {
+    if (!openai) return '{}';
     try {
         const response = await openai.chat.completions.create({
             model: "gpt-4o",
@@ -216,6 +225,7 @@ async function extractPostStructure(content: string): Promise<string> {
 
 // 4. REWRITE
 async function regeneratePost(structure: string, original: string, instructions: string): Promise<string> {
+    if (!openai) return original;
     try {
         const response = await openai.chat.completions.create({
             model: "gpt-4o",
@@ -289,6 +299,7 @@ router.delete('/posts/:id', requireAuth, async (req, res) => {
 router.post('/rewrite', requireAuth, async (req, res) => {
     const { text, profile, instruction } = req.body;
     if (!text) return res.status(400).json({ error: "Text is required" });
+    if (!openai) return res.status(503).json({ error: "OpenAI not configured" });
 
     // ... logic for rewrite ...
     // Simplified inline rewrite logic to avoid huge file size
