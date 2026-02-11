@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ContentPiece, ClientProfile } from '../types';
-import { ArrowLeft, Save, CheckCircle, Wand2, Scissors, Zap, BookOpen, ChevronRight, Copy, ChevronDown, ChevronUp, Trash2, ExternalLink, AlertCircle, Users } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, Wand2, Scissors, Zap, BookOpen, ChevronRight, Copy, ChevronDown, ChevronUp, Trash2, ExternalLink, AlertCircle, Users, Sparkles } from 'lucide-react';
 import { generateRefinedDraft } from '../services/geminiService';
 
 interface EditorProps {
@@ -86,11 +86,11 @@ const Editor: React.FC<EditorProps> = ({ content, clientProfile, onClose, onSave
         </div>
       </div>
 
-      {/* Main Content - NEW LAYOUT: 70% Left (Source), 30% Right (Editor) */}
+      {/* Main Content - NEW LAYOUT: 50% Left (Source), 50% Right (Editor) */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* Left: Context / Source Material - 70% EXPANDED */}
-        <div className="w-7/12 flex flex-col border-r border-gray-200 bg-gradient-to-b from-white to-gray-50 h-full overflow-y-auto custom-scrollbar">
+        {/* Left: Context / Source Material - 50% STANDARD */}
+        <div className="w-1/2 flex flex-col border-r border-gray-200 bg-gradient-to-b from-white to-gray-50 h-full overflow-y-auto custom-scrollbar">
           <div className="p-8 space-y-6">
             {/* Header */}
             <div>
@@ -123,12 +123,12 @@ const Editor: React.FC<EditorProps> = ({ content, clientProfile, onClose, onSave
               <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 relative group min-h-96 max-h-96 overflow-y-auto">
                 {/* Quote Mark Decoration */}
                 <div className="absolute top-3 left-4 text-gray-200 text-5xl opacity-40 font-serif">"</div>
-                
+
                 {/* Actual Text - NO TRUNCATION, FULL READABLE */}
                 <p className="text-gray-800 text-base leading-relaxed font-normal whitespace-pre-wrap pl-4 relative z-10">
                   {content.originalText}
                 </p>
-                
+
                 {/* Copy Button */}
                 <button
                   onClick={copyToClipboard}
@@ -232,7 +232,7 @@ const Editor: React.FC<EditorProps> = ({ content, clientProfile, onClose, onSave
           </div>
         </div>
 
-        {/* Right: Working Area - 30% COMPACT */}
+        {/* Right: Working Area - 50% STANDARD */}
         <div className="flex-1 flex flex-col bg-[#f8f9fc] relative">
 
           {/* AI Tools */}
