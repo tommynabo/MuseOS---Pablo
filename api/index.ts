@@ -53,6 +53,7 @@ interface ApifyPost {
     id?: string;
     url?: string;
     postUrl?: string;
+    linkedinUrl?: string;
     text?: string;
     postText?: string;
     content?: string;
@@ -560,19 +561,7 @@ async function executeWorkflowGenerate(req: Request, res: Response) {
                 let analysisObj: any = {};
                 try { analysisObj = JSON.parse(structure); } catch { }
 
-                // Debug: Log available fields to identify URL field name
-                console.log('[DEBUG] Post fields:', Object.keys(post));
-                console.log('[DEBUG] Post URL candidates:', {
-                    url: post.url,
-                    postUrl: post.postUrl,
-                    socialUrl: post.socialUrl,
-                    link: post.link,
-                    permalink: post.permalink,
-                    publicIdentifier: post.publicIdentifier,
-                    dashEntityUrn: post.dashEntityUrn
-                });
-
-                const postUrl = post.url || post.postUrl || post.socialUrl || post.link || post.permalink || '';
+                const postUrl = post.linkedinUrl || post.url || post.postUrl || post.socialUrl || '';
                 const insertResult = await supabase.from('posts').insert({
                     user_id: user.id,
                     original_post_id: post.id || 'unknown',
