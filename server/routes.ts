@@ -498,11 +498,21 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
             // 4. THE WRITER: Fill the structure
             const rewritten = await regeneratePost(structureJson || '', filteredContent, customInstructions);
 
+            // Debug: Log available fields to identify URL field name
+            console.log('[DEBUG] Post fields:', Object.keys(post));
+            console.log('[DEBUG] Post URL candidates:', {
+                url: post.url,
+                postUrl: post.postUrl,
+                socialUrl: post.socialUrl,
+                link: post.link,
+                permalink: post.permalink
+            });
+
             // Save to DB
             const { error: insertError } = await supabase.from('posts').insert({
                 user_id: user.id,
                 original_post_id: post.id || 'unknown',
-                original_url: post.url || post.postUrl || post.socialUrl || '',
+                original_url: post.url || post.postUrl || post.socialUrl || post.link || post.permalink || '',
                 original_content: postContent,
                 original_author: post.author?.name || post.authorName || 'Unknown',
                 generated_content: rewritten,
