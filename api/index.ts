@@ -223,7 +223,7 @@ async function extractPostStructure(content: string): Promise<string> {
     if (!openai) return '{}';
     try {
         const response = await openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-4o-mini",
             messages: [
                 {
                     role: "system",
@@ -534,76 +534,80 @@ async function executeWorkflowGenerate(req: Request, res: Response) {
                 continue; // Try next round with more posts
             }
 
-            // 3. GENERATE (only what we still need)
+            // 3. GENERATE IN PARALLEL (process all posts simultaneously for speed)
             const toProcess = bestPosts.slice(0, remaining);
-            for (const post of toProcess) {
-                if (savedResults.length >= targetCount) break;
+            const validPosts = toProcess.filter(post => {
+                const text = extractPostText(post);
+                if (!text || text.length < 30) {
+                    console.log(`[WORKFLOW] Skipping post (text too short: ${text?.length})`);
+                    return false;
+                }
+                return true;
+            });
 
+            console.log(`[WORKFLOW] Processing ${validPosts.length} posts in PARALLEL...`);
+            const results = await Promise.allSettled(validPosts.map(async (post) => {
                 const postText = extractPostText(post);
-                if (!postText || postText.length < 30) {
-                    console.log(`[WORKFLOW] Skipping post (text too short: ${postText.length})`);
-                    continue;
+                const filtered = filterSensitiveData(postText);
+                const structure = await extractPostStructure(filtered);
+                console.log(`[WORKFLOW] ✅ Deep analysis complete for post`);
+                const rewritten = await regeneratePost(structure, filtered, customInstructions);
+
+                if (!rewritten || rewritten.length < 20) {
+                    throw new Error(`Rewrite too short: ${rewritten?.length}`);
                 }
 
-                try {
-                    const filtered = filterSensitiveData(postText);
-                    const structure = await extractPostStructure(filtered);
-                    console.log(`[WORKFLOW] ✅ Deep analysis complete for post`);
-                    const rewritten = await regeneratePost(structure, filtered, customInstructions);
+                let analysisObj: any = {};
+                try { analysisObj = JSON.parse(structure); } catch { }
 
-                    if (!rewritten || rewritten.length < 20) {
-                        console.log(`[WORKFLOW] Skipping post (rewrite too short: ${rewritten?.length})`);
-                        continue;
-                    }
-
-                    // Parse deep analysis for rich metadata storage
-                    let analysisObj: any = {};
-                    try { analysisObj = JSON.parse(structure); } catch { }
-
-                    const postUrl = post.url || post.postUrl || '';
-                    const insertResult = await supabase.from('posts').insert({
-                        user_id: user.id,
-                        original_content: postText,
-                        generated_content: rewritten,
-                        type: source === 'keywords' ? 'research' : 'parasite',
-                        status: 'idea',
-                        meta: {
-                            structure: analysisObj,
-                            original_url: postUrl,
-                            engagement: { likes: getMetric(post, 'likes'), comments: getMetric(post, 'comments') },
-                            ai_analysis: {
-                                hook: analysisObj.hook || null,
-                                narrative_arc: analysisObj.narrative_arc || null,
-                                emotional_triggers: analysisObj.emotional_triggers || null,
-                                persuasion_techniques: analysisObj.persuasion_techniques || null,
-                                engagement_mechanics: analysisObj.engagement_mechanics || null,
-                                virality_score: analysisObj.virality_score || null,
-                                structural_blueprint: analysisObj.structural_blueprint || null,
-                                replication_strategy: analysisObj.replication_strategy || null
-                            }
-                        }
-                    });
-
-                    if (insertResult.error) {
-                        console.error(`[WORKFLOW] DB insert error:`, insertResult.error);
-                        continue;
-                    }
-
-                    savedResults.push({
-                        original: postText.substring(0, 100) + '...',
-                        generated: rewritten,
-                        sourceUrl: postUrl,
-                        analysis: {
+                const postUrl = post.url || post.postUrl || '';
+                const insertResult = await supabase.from('posts').insert({
+                    user_id: user.id,
+                    original_content: postText,
+                    generated_content: rewritten,
+                    type: source === 'keywords' ? 'research' : 'parasite',
+                    status: 'idea',
+                    meta: {
+                        structure: analysisObj,
+                        original_url: postUrl,
+                        engagement: { likes: getMetric(post, 'likes'), comments: getMetric(post, 'comments') },
+                        ai_analysis: {
                             hook: analysisObj.hook || null,
+                            narrative_arc: analysisObj.narrative_arc || null,
+                            emotional_triggers: analysisObj.emotional_triggers || null,
+                            persuasion_techniques: analysisObj.persuasion_techniques || null,
+                            engagement_mechanics: analysisObj.engagement_mechanics || null,
                             virality_score: analysisObj.virality_score || null,
-                            narrative_arc: analysisObj.narrative_arc?.structure || null,
-                            emotional_triggers: analysisObj.emotional_triggers || null
+                            structural_blueprint: analysisObj.structural_blueprint || null,
+                            replication_strategy: analysisObj.replication_strategy || null
                         }
-                    });
+                    }
+                });
+
+                if (insertResult.error) {
+                    throw new Error(`DB insert error: ${insertResult.error.message}`);
+                }
+
+                return {
+                    original: postText.substring(0, 100) + '...',
+                    generated: rewritten,
+                    sourceUrl: postUrl,
+                    analysis: {
+                        hook: analysisObj.hook || null,
+                        virality_score: analysisObj.virality_score || null,
+                        narrative_arc: analysisObj.narrative_arc?.structure || null,
+                        emotional_triggers: analysisObj.emotional_triggers || null
+                    }
+                };
+            }));
+
+            // Collect successful results
+            for (const result of results) {
+                if (result.status === 'fulfilled' && savedResults.length < targetCount) {
+                    savedResults.push(result.value);
                     console.log(`[WORKFLOW] ✅ Post ${savedResults.length}/${targetCount} saved with deep analysis`);
-                } catch (postError: any) {
-                    console.error(`[WORKFLOW] Error processing single post:`, postError.message);
-                    continue; // Don't let one post crash the whole batch
+                } else if (result.status === 'rejected') {
+                    console.error(`[WORKFLOW] Error processing post:`, result.reason?.message || result.reason);
                 }
             }
         }
