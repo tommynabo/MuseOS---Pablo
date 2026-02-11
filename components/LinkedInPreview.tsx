@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, ThumbsUp, MessageSquare, Share2, Send, MoreHorizontal, Globe, Brain, Target, Heart, Zap, TrendingUp, MessageCircle, BookOpen, Copy, CheckCircle } from 'lucide-react';
 import { ContentPiece } from '../types';
+import LinkedInPostLink from './LinkedInPostLink';
 
 interface LinkedInPreviewProps {
     post: ContentPiece;
@@ -95,6 +96,16 @@ const LinkedInPreview: React.FC<LinkedInPreviewProps> = ({
                     {/* ===== PREVIEW TAB ===== */}
                     {activeTab === 'preview' && (
                         <div className="p-4">
+                            {/* LinkedIn Original Post Link */}
+                            {(post.originalUrl || post.sourceUrl) && (
+                                <div className="mb-3 flex justify-center">
+                                    <LinkedInPostLink
+                                        url={post.originalUrl || post.sourceUrl}
+                                        variant="compact"
+                                        iconSize={16}
+                                    />
+                                </div>
+                            )}
                             <div className="bg-white rounded-lg border border-gray-300 shadow-sm">
                                 {/* Post Header */}
                                 <div className="p-3 flex gap-3">
