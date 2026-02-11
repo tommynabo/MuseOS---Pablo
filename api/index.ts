@@ -563,6 +563,9 @@ async function executeWorkflowGenerate(req: Request, res: Response) {
                 const postUrl = post.url || post.postUrl || '';
                 const insertResult = await supabase.from('posts').insert({
                     user_id: user.id,
+                    original_post_id: post.id || 'unknown',
+                    original_url: postUrl,
+                    original_author: post.author?.name || post.authorName || 'Unknown',
                     original_content: postText,
                     generated_content: rewritten,
                     type: source === 'keywords' ? 'research' : 'parasite',
