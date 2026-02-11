@@ -331,93 +331,151 @@ async function executeWorkflowGenerate(req: Request, res: Response) {
 
     if (!user) return res.status(401).json({ error: "Unauthorized" });
 
+    const MAX_ROUNDS = 3;        // Max fetch rounds to prevent infinite loops
+    const BUFFER_MULTIPLIER = 5; // Fetch 5× more than needed from Apify
+    const targetCount = Math.min(Number(count) || 1, 10); // Cap at 10
+
     try {
         const { data: profile } = await supabase.from('profiles').select('*').single();
         if (!profile) return res.status(400).json({ error: "Config needed." });
 
         const keywords = profile.niche_keywords || [];
         const customInstructions = profile.custom_instructions || '';
-        let allPosts: ApifyPost[] = [];
 
-        console.log('[WORKFLOW] Starting. Source:', source, 'Count:', count, 'Keywords:', keywords);
+        console.log('[WORKFLOW] Starting. Source:', source, 'Target:', targetCount, 'Keywords:', keywords);
 
-        // 1. FETCH
+        // Prepare search queries (only once, reused across rounds)
+        let searchQueries: string[] = [];
+        let creatorUrls: string[] = [];
+
         if (source === 'keywords') {
             if (keywords.length === 0) return res.status(400).json({ error: "No keywords." });
-            const activeKeywords = keywords.slice(0, 2);
+            const activeKeywords = keywords.slice(0, 3); // Use top 3 keywords
             console.log('[WORKFLOW] Active keywords:', activeKeywords);
             const expandedLists = await Promise.all(activeKeywords.map((k: string) => expandSearchQuery(k)));
             console.log('[WORKFLOW] Expanded queries:', expandedLists);
             const rawQueries = [...new Set([...activeKeywords, ...expandedLists.flat()])];
-            const searchQueries = rawQueries.filter(q => typeof q === 'string' && q.trim().length > 0).slice(0, 3);
+            searchQueries = rawQueries.filter(q => typeof q === 'string' && q.trim().length > 0).slice(0, 5);
             console.log('[WORKFLOW] Final search queries:', searchQueries);
-
-            const results = await Promise.all(searchQueries.map(q => searchLinkedInPosts([q], 2)));
-            allPosts = results.flat();
         } else {
             const { data: creators } = await supabase.from('creators').select('linkedin_url');
             if (!creators?.length) return res.status(400).json({ error: "No creators." });
-            const urls = creators
+            creatorUrls = creators
                 .map((c: any) => c.linkedin_url)
                 .filter((u: any) => typeof u === 'string' && u.trim().length > 0)
                 .slice(0, 5);
-
-            if (urls.length === 0) return res.status(400).json({ error: "No valid creator URLs." });
-            allPosts = await getCreatorPosts(urls, 5);
+            if (creatorUrls.length === 0) return res.status(400).json({ error: "No valid creator URLs." });
         }
 
-        console.log('[WORKFLOW] Total posts fetched:', allPosts.length);
-        // Log first post's raw keys to diagnose field name mismatches
-        if (allPosts.length > 0) {
-            const sample = allPosts[0];
-            console.log('[WORKFLOW] Sample post keys:', Object.keys(sample));
-            console.log('[WORKFLOW] Sample post text fields:', { text: sample.text?.substring(0, 50), postText: sample.postText?.substring(0, 50), content: sample.content?.substring(0, 50), body: sample.body?.substring(0, 50) });
-            console.log('[WORKFLOW] Sample post metrics:', { likesCount: sample.likesCount, numLikes: sample.numLikes, commentsCount: sample.commentsCount, numComments: sample.numComments, reactionCount: sample.reactionCount, totalReactionCount: sample.totalReactionCount });
-            console.log('[WORKFLOW] extractPostText result:', extractPostText(sample).substring(0, 100));
-            console.log('[WORKFLOW] getMetric likes:', getMetric(sample, 'likes'), 'comments:', getMetric(sample, 'comments'));
-        }
+        // ===== SMART BUFFER LOOP =====
+        const savedResults: any[] = [];
+        const processedPostIds = new Set<string>(); // Deduplicate across rounds
 
-        // 2. ANALYZE
-        const bestPosts = await evaluatePostEngagement(allPosts);
-        console.log('[WORKFLOW] Best posts after evaluation:', bestPosts.length);
+        for (let round = 0; round < MAX_ROUNDS; round++) {
+            const remaining = targetCount - savedResults.length;
+            if (remaining <= 0) break; // Target met! 🎯
 
-        if (bestPosts.length === 0) {
-            console.log('[WORKFLOW] No posts survived evaluation! Returning empty.');
-            return res.json({ status: 'success', data: [], message: "No suitable posts found. Try different keywords." });
-        }
+            const postsPerQuery = Math.max(2, remaining * BUFFER_MULTIPLIER); // Bigger buffer each round
+            console.log(`[WORKFLOW] Round ${round + 1}/${MAX_ROUNDS}: need ${remaining} more, fetching ${postsPerQuery} per query`);
 
-        // 3. GENERATE
-        const postsToProcess = bestPosts.slice(0, count);
-        console.log('[WORKFLOW] Processing', postsToProcess.length, 'posts');
-        const generatedResults = await Promise.all(postsToProcess.map(async (post, idx) => {
-            const postText = extractPostText(post);
-            console.log(`[WORKFLOW] Post ${idx}: text length=${postText.length}`);
-            if (!postText) return null;
+            // 1. FETCH (buffer)
+            let roundPosts: ApifyPost[] = [];
+            if (source === 'keywords') {
+                const results = await Promise.all(
+                    searchQueries.map(q => searchLinkedInPosts([q], postsPerQuery))
+                );
+                roundPosts = results.flat();
+            } else {
+                roundPosts = await getCreatorPosts(creatorUrls, postsPerQuery);
+            }
 
-            const filtered = filterSensitiveData(postText);
-            const structure = await extractPostStructure(filtered);
-            console.log(`[WORKFLOW] Post ${idx}: structure extracted`);
-            const rewritten = await regeneratePost(structure, filtered, customInstructions);
-            console.log(`[WORKFLOW] Post ${idx}: rewritten (${rewritten.length} chars)`);
-
-            const postUrl = post.url || post.postUrl || '';
-            const insertResult = await supabase.from('posts').insert({
-                user_id: user.id,
-                original_content: postText,
-                generated_content: rewritten,
-                type: source === 'keywords' ? 'research' : 'parasite',
-                status: 'idea',
-                meta: { structure, original_url: postUrl, engagement: { likes: getMetric(post, 'likes'), comments: getMetric(post, 'comments') } }
+            // Deduplicate against already-processed posts
+            const newPosts = roundPosts.filter(p => {
+                const postId = p.id || p.url || extractPostText(p).substring(0, 50);
+                if (processedPostIds.has(postId)) return false;
+                processedPostIds.add(postId);
+                return true;
             });
-            if (insertResult.error) console.error(`[WORKFLOW] Post ${idx}: DB insert error:`, insertResult.error);
-            else console.log(`[WORKFLOW] Post ${idx}: saved to DB`);
 
-            return { original: postText.substring(0, 100) + '...', generated: rewritten, sourceUrl: postUrl };
-        }));
+            console.log(`[WORKFLOW] Round ${round + 1}: ${roundPosts.length} fetched, ${newPosts.length} new (after dedup)`);
 
-        const validResults = generatedResults.filter(Boolean);
-        console.log('[WORKFLOW] Done!', validResults.length, 'posts generated successfully');
-        res.json({ status: 'success', data: validResults, message: `${validResults.length} posts generated` });
+            if (newPosts.length === 0) {
+                console.log(`[WORKFLOW] Round ${round + 1}: No new posts available. Stopping.`);
+                break; // No more unique posts to process
+            }
+
+            // Log sample post for diagnostics
+            if (round === 0 && newPosts.length > 0) {
+                const sample = newPosts[0];
+                console.log('[WORKFLOW] Sample post keys:', Object.keys(sample));
+                console.log('[WORKFLOW] Sample metrics:', {
+                    likes: getMetric(sample, 'likes'),
+                    comments: getMetric(sample, 'comments'),
+                    textLen: extractPostText(sample).length
+                });
+            }
+
+            // 2. EVALUATE (filter the buffer)
+            const bestPosts = await evaluatePostEngagement(newPosts);
+            console.log(`[WORKFLOW] Round ${round + 1}: ${bestPosts.length} posts survived evaluation`);
+
+            if (bestPosts.length === 0) {
+                console.log(`[WORKFLOW] Round ${round + 1}: All filtered out. Trying next round.`);
+                continue; // Try next round with more posts
+            }
+
+            // 3. GENERATE (only what we still need)
+            const toProcess = bestPosts.slice(0, remaining);
+            for (const post of toProcess) {
+                if (savedResults.length >= targetCount) break;
+
+                const postText = extractPostText(post);
+                if (!postText || postText.length < 30) {
+                    console.log(`[WORKFLOW] Skipping post (text too short: ${postText.length})`);
+                    continue;
+                }
+
+                try {
+                    const filtered = filterSensitiveData(postText);
+                    const structure = await extractPostStructure(filtered);
+                    const rewritten = await regeneratePost(structure, filtered, customInstructions);
+
+                    if (!rewritten || rewritten.length < 20) {
+                        console.log(`[WORKFLOW] Skipping post (rewrite too short: ${rewritten?.length})`);
+                        continue;
+                    }
+
+                    const postUrl = post.url || post.postUrl || '';
+                    const insertResult = await supabase.from('posts').insert({
+                        user_id: user.id,
+                        original_content: postText,
+                        generated_content: rewritten,
+                        type: source === 'keywords' ? 'research' : 'parasite',
+                        status: 'idea',
+                        meta: { structure, original_url: postUrl, engagement: { likes: getMetric(post, 'likes'), comments: getMetric(post, 'comments') } }
+                    });
+
+                    if (insertResult.error) {
+                        console.error(`[WORKFLOW] DB insert error:`, insertResult.error);
+                        continue; // Skip this post, try next
+                    }
+
+                    savedResults.push({ original: postText.substring(0, 100) + '...', generated: rewritten, sourceUrl: postUrl });
+                    console.log(`[WORKFLOW] ✅ Post ${savedResults.length}/${targetCount} saved`);
+                } catch (postError: any) {
+                    console.error(`[WORKFLOW] Error processing single post:`, postError.message);
+                    continue; // Don't let one post crash the whole batch
+                }
+            }
+        }
+
+        console.log(`[WORKFLOW] Done! ${savedResults.length}/${targetCount} posts generated`);
+        res.json({
+            status: 'success',
+            data: savedResults,
+            message: `${savedResults.length} posts generated`,
+            postsProcessed: savedResults.length
+        });
 
     } catch (error: any) {
         console.error("[WORKFLOW] FATAL ERROR:", error);
