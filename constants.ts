@@ -1,89 +1,81 @@
 import { ClientProfile, ContentPiece, Stats } from './types';
 
 export const CLIENT_PROFILES: Record<string, ClientProfile> = {
-  psychologist: {
-    id: 'psychologist',
-    name: 'Lilih M.',
-    role: 'Psicóloga Clínica',
-    avatar: 'https://picsum.photos/id/64/200/200',
-    tone: 'Empático y Suave',
-    nicheKeywords: ['Dependencia Emocional', 'Relaciones Tóxicas', 'Ansiedad', 'Autoestima', 'Psicología'],
-    targetCreators: ['https://linkedin.com/in/brenebrown', 'https://linkedin.com/in/estherperel'],
-    customInstructions: "Usa lenguaje inclusivo ('nosotros'). Evita jerga clínica complicada. Enfócate en la sensación de alivio y validación emocional.",
-  },
   financial_advisor: {
     id: 'financial_advisor',
-    name: 'Pablo R.',
-    role: 'Asesor Fiscal y Patrimonial',
-    avatar: 'https://picsum.photos/id/91/200/200',
-    tone: 'Autoritario y Directo',
-    nicheKeywords: ['Fiscalidad España', 'Autónomos', 'Gestión Patrimonial', 'Ley Fiscal'],
-    targetCreators: ['https://linkedin.com/in/raydalio', 'https://linkedin.com/in/finance-guru'],
-    customInstructions: "Cumplimiento legal estricto. Sin promesas de retornos garantizados. Enfócate en mitigación de riesgos y normativa de Hacienda.",
+    name: 'Pablo',
+    role: 'Asesor Financiero / Gestor Patrimonial',
+    avatar: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=200',
+    tone: 'Cercano pero Profesional',
+    nicheKeywords: ['Fiscalidad España', 'Jubilación', 'Fondos de Inversión', 'Cuentas de Depósitos', 'Planes de Pensiones', 'Inflación', 'Gestión Patrimonial'],
+    targetCreators: ['https://linkedin.com/in/marcvidal', 'https://linkedin.com/in/juanrallo', 'https://linkedin.com/in/raydalio'],
+    customInstructions: "Eres Pablo, un Asesor Financiero y Gestor Patrimonial independiente en España con más de 25 años de experiencia. Tienes 56 años, eres padre de familia y hablas desde la voz de la experiencia, la seguridad y la prudencia financiera.Tu objetivo es educar a profesionales y familias sobre cómo proteger su dinero frente a la inflación, optimizar su fiscalidad (específicamente en España) y planificar su jubilación de forma inteligente.Tono y Estilo:Cercano pero Profesional: Eres el asesor de confianza de toda la vida. Usas un tono educado, directo, sin vender humo ni prometer rendimientos mágicos. No usas lenguaje de 'criptobro' ni de 'lobo de Wall Street'.Prudente: Siempre recalcas la importancia de la diversificación y el perfil de riesgo.Formato de Escritura: Párrafos muy cortos (1-2 líneas), uso estratégico de saltos de línea y emojis sobrios (📉, 💡, 🏛️).Regla de Oro: NUNCA menciones a la empresa 'Safe Bro'. Hablas siempre como profesional independiente.Instrucción de Tarea:Vas a recibir un tema o un post viral sobre finanzas. Tu trabajo es reescribirlo usando tu tono y experiencia. El post debe tener:Un 'Hook' (gancho) que hable de un dolor real (pagar muchos impuestos, perder poder adquisitivo).Una explicación sencilla de un concepto complejo.Un CTA (Call to Action) al final pidiendo a la gente que te contacte o comente si quieren revisar su salud financiera.",
   },
 };
 
 export const MOCK_STATS: Record<string, Stats> = {
-  psychologist: {
-    impressions: 12540,
-    postsReady: 3,
-    ideasGenerated: 12,
-    engagementRate: 4.2,
-  },
   financial_advisor: {
     impressions: 8900,
     postsReady: 5,
-    ideasGenerated: 8,
+    ideasGenerated: 24,
     engagementRate: 2.8,
   },
 };
 
 export const INITIAL_CONTENT: ContentPiece[] = [
-  // Scenario A: Psychologist
+  // Scenario A: Financial News
   {
     id: 'idea-1',
-    sourceType: 'creator_reference',
-    originalAuthor: 'Simon Sinek',
-    originalUrl: 'https://linkedin.com/post/xyz',
-    originalText: "Leadership is not about being in charge. It is about taking care of those in your charge. When people feel safe, they innovate.",
-    viralMetrics: { likes: 14000, comments: 230 },
-    tags: ['Referencia Viral'],
+    sourceType: 'keyword_search',
+    originalAuthor: 'El País Economía',
+    originalUrl: 'https://elpais.com/economia',
+    originalText: "Hacienda intensifica las inspecciones a los autónomos que trabajan desde casa en relación con las deducciones de suministros.",
+    viralMetrics: { likes: 450, comments: 120 },
+    tags: ['Noticia', 'Fiscalidad'],
     status: 'idea',
     targetDate: new Date(Date.now() + 86400000).toISOString(),
     generatedDraft: {
-      hook: "No necesitas 'arreglar' a tu pareja. Necesitas entenderla.",
-      body: "En las relaciones, a menudo confundimos el control con el cuidado. Intentamos moldear a alguien en una versión que nos haga sentir seguros a *nosotros*.\n\nPero la verdadera conexión ocurre cuando soltamos el resultado.\n\nCuando dejamos de intentar ser el 'líder' de la relación y empezamos a ser un compañero en el proceso de sanación.",
-      cta: "¿Cuándo fue la última vez que escuchaste sin intentar resolver el problema?",
-      researchNotes: ["Referencia: Teoría del Apego (Bowlby)", "Concepto: Sostener el espacio"],
+      hook: "🚨 Hacienda está vigilando tus facturas de luz y agua si trabajas desde casa.",
+      body: "Muchos autónomos siguen deduciendo el 100% de sus suministros domésticos. Esto es un error que te puede costar una inspección.\n\nLa ley actual solo permite deducir el 30% de la proporción de metros cuadrados afectos a la actividad.\n\nEjemplo: Si tu despacho es el 10% de tu casa, solo puedes deducir el 30% de ese 10%.",
+      cta: "¿Tienes dudas sobre qué puedes deducir? Comenta 'AUDITORÍA' y lo revisamos.",
+      researchNotes: ["Ley 35/2006 IRPF", "Consulta Vinculante V0000-00"],
       viralityAnalysis: {
-        viralityReason: "Las personas buscan validación en relaciones. Este post toca la inseguridad universal de 'no ser suficiente' y ofrece perspectiva reconfortante. El reframing de 'control vs cuidado' es transversalmente aplicable (relaciones de pareja, familia, liderazgo).",
-        bottleneck: "El público necesita conexión personal con el contenido. Sin un gancho emocional fuerte en las primeras 2 líneas, se pierde. El tono reflexivo puede resultar demasiado suave para algoritmos que favorecen contenido provocador.",
-        engagement_trigger: "Las preguntas reflexivas generan comentarios. Los lectores quieren compartir sus experiencias de relaciones insanas. El lenguaje inclusivo ('nosotros') genera sentido de comunidad.",
-        audience_relevance: "Máxima relevancia para personas en relaciones complicadas (25-45 años, predominante femenino). Excelente para profesionales en desarrollo personal, coaches, y terapeutas."
+        viralityReason: "El contenido genera miedo controlado (fear appeal) que convierte lectores en savers/sharers. Los autónomos comparten para proteger a colegas.",
+        bottleneck: "Aunque genera urgencia, puede resultar cínica o alarmista si no se incluye el contexto legal completo.",
+        engagement_trigger: "El CTA 'comenta AUDITORÍA' genera engagement directo. Los autónomos comentan por miedo y por ayudar a otros.",
+        audience_relevance: "Altamente relevante para autónomos y profesionales independientes en España."
       }
     },
+    aiAnalysis: {
+        hook: { type: "Urgency", text: "🚨 Hacienda está vigilando tus facturas", effectiveness: 85, why_it_works: "Miedo a la autoridad" },
+        virality_score: { overall: 85, verdict: "High Probability" }
+    }
   },
-  // Scenario B: Financial
+  // Scenario B: Investment Wisdom
   {
     id: 'idea-2',
-    sourceType: 'keyword_search',
-    originalAuthor: 'El País Economía',
-    originalText: "Hacienda intensifica las inspecciones a los autónomos que trabajan desde casa en relación con las deducciones de suministros.",
-    viralMetrics: { likes: 450, comments: 120 },
-    tags: ['Noticia', 'Alta Urgencia'],
+    sourceType: 'creator_reference',
+    originalAuthor: 'Ray Dalio',
+    originalText: "Cash is trash. You need to be diversified.",
+    viralMetrics: { likes: 15000, comments: 800 },
+    tags: ['Inversión', 'Mentalidad'],
     status: 'drafted',
     targetDate: new Date(Date.now() + 172800000).toISOString(),
     generatedDraft: {
-      hook: "🚨 Hacienda está vigilando tus facturas de luz y agua si trabajas desde casa.",
-      body: "Muchos autónomos siguen deduciendo el 100% de sus suministros domésticos. Esto es un error que te puede costar una inspección.\n\nLa ley actual solo permite deducir el 30% de la proporción de metros cuadrados afectos a la actividad.\n\nEjemplo: Si tu despacho es el 10% de tu casa, solo puedes deducir el 30% de ese 10%.",
-      cta: "Comenta 'AUDITORÍA' y te envío mi checklist de gastos deducibles 2024.",
-      researchNotes: ["Ley 35/2006 IRPF", "Consulta Vinculante V0000-00"],
+      hook: "¿Sigues guardando todo tu dinero en la cuenta corriente?",
+      body: "Con la inflación actual, dejar el dinero quieto es perder poder adquisitivo día a día. \n\nNo se trata de hacerse rico rápido, se trata de proteger lo que tanto te ha costado ganar.\n\nLa diversificación no es solo una estrategia, es un seguro de vida para tu patrimonio.",
+      cta: "Si quieres saber cómo proteger tus ahorros este año, escríbeme.",
+      researchNotes: ["Datos inflación INE", "Principios de Ray Dalio"],
       viralityAnalysis: {
-        viralityReason: "El contenido genera miedo controlado (fear appeal) que convierte lectores en savers/sharers. Los autónomos comparten para proteger a colegas. La urgencia ('Hacienda está vigilando') activa el FOMO fiscal. Los detalles específicos (leyes, porcentajes) generan credibilidad que impulsa shares.",
-        bottleneck: "Aunque genera urgencia, puede resultar cínica o alarmista si no se incluye el contexto legal completo. Las personas pueden dudar si realmente es tan grave. Falta la esperanza/solución clara en el gancho inicial, lo que limita engagement positivo.",
-        engagement_trigger: "El CTA 'comenta AUDITORÍA' genera engagement directo. Los autónomos comentan por miedo y por ayudar a otros. La especificidad legal (leyes exactas) genera comentarios de verificación y debate.",
-        audience_relevance: "Altamente relevante para autónomos (100% target). Especialmente para freelancers, consultores, y pequeños negocios. Máximo engagement en LinkedIn España. Influencia media en otros países."
+        viralityReason: "Toca el dolor de la pérdida de valor del dinero (aversión a la pérdida).",
+        bottleneck: "Puede parecer un consejo genérico si no se acompaña de datos actuales.",
+        engagement_trigger: "Pregunta retórica inicial que invita a la reflexión.",
+        audience_relevance: "Relevante para familias y ahorradores preocupados por el futuro."
       }
     },
+    aiAnalysis: {
+        hook: { type: "Question", text: "¿Sigues guardando todo tu dinero...?", effectiveness: 75, why_it_works: "Curiosity gap" },
+        virality_score: { overall: 70, verdict: "Medium Probability" }
+    }
   },
 ];

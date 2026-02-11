@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, PenTool, Settings as SettingsIcon, LogOut, Sparkles, FolderKanban } from 'lucide-react';
+import { LayoutDashboard, PenTool, Settings as SettingsIcon, LogOut, Sparkles, FolderKanban, CheckCircle } from 'lucide-react';
 import { ClientProfile } from '../types';
 
 interface LayoutProps {
@@ -16,61 +16,61 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onNavigate, curren
     return (
       <button
         onClick={() => onNavigate(id)}
-        className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-semibold transition-all duration-200 relative overflow-hidden group ${
-          isActive 
-          ? 'text-indigo-600 bg-indigo-50/80 shadow-sm' 
-          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100/50'
-        }`}
+        className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-semibold transition-all duration-200 relative overflow-hidden group ${isActive
+            ? 'text-slate-900 bg-slate-100 shadow-sm'
+            : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+          }`}
       >
-        {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-indigo-600 rounded-r-full"></div>}
-        <Icon size={22} className={isActive ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-600'} />
+        {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-blue-700 rounded-r-full"></div>}
+        <Icon size={22} className={isActive ? 'text-blue-700' : 'text-slate-400 group-hover:text-slate-600'} />
         {label}
       </button>
     );
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fc] flex font-sans text-gray-900">
+    <div className="min-h-screen bg-[#f1f5f9] flex font-sans text-slate-900">
       {/* Sidebar */}
-      <div className="w-72 bg-white flex flex-col fixed inset-y-0 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+      <div className="w-72 bg-white flex flex-col fixed inset-y-0 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-slate-100">
         <div className="p-8">
-          <div className="flex items-center gap-3 text-indigo-600 font-bold text-2xl tracking-tight">
-            <div className="bg-indigo-600 p-2 rounded-xl text-white">
-                <Sparkles size={20} fill="currentColor" />
+          <div className="flex items-center gap-3 text-slate-900 font-bold text-xl tracking-tight">
+            <div className="bg-slate-900 p-2 rounded-xl text-white">
+              <Sparkles size={18} fill="currentColor" />
             </div>
-            MuseOS
+            <span>MuseOS</span>
+            <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">Finanzas</span>
           </div>
         </div>
 
         {/* User Info */}
         <div className="px-8 pb-8">
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                <img src={currentProfile.avatar} className="w-12 h-12 rounded-full border-2 border-white shadow-sm" alt="Avatar" />
-                <div>
-                    <p className="text-sm font-bold text-gray-900">{currentProfile.name}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                        <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">En línea</p>
-                    </div>
-                </div>
+          <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+            <img src={currentProfile.avatar} className="w-12 h-12 rounded-full border-2 border-white shadow-sm object-cover" alt="Avatar" />
+            <div>
+              <p className="text-sm font-bold text-slate-900">{currentProfile.name}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Asesor Activo</p>
+              </div>
             </div>
+          </div>
         </div>
 
         <div className="px-4 space-y-2 flex-1">
           <NavItem id="dashboard" icon={LayoutDashboard} label="Dashboard" />
           <NavItem id="content" icon={FolderKanban} label="Gestión Contenido" />
-          <NavItem id="settings" icon={SettingsIcon} label="Configuración" />
+          <NavItem id="settings" icon={SettingsIcon} label="Estrategia" />
         </div>
 
         <div className="p-8">
-           <button 
-             onClick={onLogout}
-             className="w-full flex items-center justify-center gap-3 px-4 py-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all font-medium text-sm"
-           >
-              <LogOut size={18} />
-              Cerrar Sesión
-           </button>
-           <p className="text-center text-[10px] text-gray-300 mt-4">MuseOS v2.0</p>
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all font-medium text-sm"
+          >
+            <LogOut size={18} />
+            Cerrar Sesión
+          </button>
+          <p className="text-center text-[10px] text-slate-300 mt-4">MuseOS v2.1 • Pablo Edition</p>
         </div>
       </div>
 

@@ -15,7 +15,7 @@ const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [currentProfile, setCurrentProfile] = useState<ClientProfile>(CLIENT_PROFILES['psychologist']);
+  const [currentProfile, setCurrentProfile] = useState<ClientProfile>(CLIENT_PROFILES['financial_advisor']);
   const [contentPieces, setContentPieces] = useState<ContentPiece[]>(INITIAL_CONTENT);
   const [selectedIdea, setSelectedIdea] = useState<ContentPiece | null>(null);
 
@@ -53,9 +53,9 @@ const App: React.FC = () => {
       if (data) {
         // Map snake_case to camelCase
         setCurrentProfile({
-          id: 'psychologist', // generic ID for frontend logic
-          name: data.role || 'Usuario', // mapping role to name for now or add name field
-          role: data.role || 'User',
+          id: 'financial_advisor', // mapped ID
+          name: data.role || 'Pablo',
+          role: data.role || 'Asesor Financiero',
           avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200',
           tone: data.tone || 'Empático',
           nicheKeywords: data.niche_keywords || [],
