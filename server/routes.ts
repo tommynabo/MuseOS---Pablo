@@ -5,6 +5,12 @@ import { generatePostOutline, regeneratePost, generateIdeasFromResearch, evaluat
 
 const router = express.Router();
 
+// Strict environment validation for dynamic tables
+const { DB_TABLE_PROFILES, DB_TABLE_POSTS, DB_TABLE_CREATORS } = process.env;
+if (!DB_TABLE_PROFILES || !DB_TABLE_POSTS || !DB_TABLE_CREATORS) {
+    console.error('❌ CRITICAL: Database table environment variables are missing (DB_TABLE_PROFILES, DB_TABLE_POSTS, DB_TABLE_CREATORS).');
+}
+
 /**
  * Middleware to extract Bearer Token
  */
@@ -125,7 +131,7 @@ const getUserSupabase = (req: Request) => {
  */
 router.get('/creators', requireAuth, async (req, res) => {
     const supabase = getUserSupabase(req);
-    const { data, error } = await supabase.from('creators_pablo').select('*');
+    const { data, error } = await supabase.from(process.env.DB_TABLE_CREATORS!).select('*');
 
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
@@ -140,7 +146,7 @@ router.post('/creators', requireAuth, async (req, res) => {
     if (authError || !user) return res.status(401).json({ error: "Unauthorized" });
 
     const { data, error } = await supabase
-        .from('creators_pablo')
+        .from(process.env.DB_TABLE_CREATORS!)
         .insert({
             user_id: user.id,
             name,
@@ -166,7 +172,7 @@ router.post('/workflow/parasite', requireAuth, async (req, res) => {
 
     try {
         // Step 1: Get creators
-        const { data: creators, error: creatorError } = await supabase.from('creators_pablo').select('linkedin_url');
+        const { data: creators, error: creatorError } = await supabase.from(process.env.DB_TABLE_CREATORS!).select('linkedin_url');
         if (creatorError) throw creatorError;
 
         if (!creators || creators.length === 0) {
@@ -189,7 +195,7 @@ router.post('/workflow/parasite', requireAuth, async (req, res) => {
         const processedPosts = [];
 
         // Step 3: Get User Profile (custom_instructions for tone of voice)
-        const { data: profile } = await supabase.from('profiles_pablo').select('*').single();
+        const { data: profile } = await supabase.from(process.env.DB_TABLE_PROFILES!).select('*').single();
         const customInstructions = profile?.custom_instructions || '';
 
         for (const post of highEngagementPosts) {
@@ -203,7 +209,7 @@ router.post('/workflow/parasite', requireAuth, async (req, res) => {
             const rewritten = await regeneratePost(outline || '', postText, customInstructions);
 
             // Save to DB
-            await supabase.from('posts_pablo').insert({
+            await supabase.from(process.env.DB_TABLE_POSTS!).insert({
                 user_id: user.id,
                 original_post_id: post.id || 'unknown',
                 original_url: post.url || '',
@@ -268,7 +274,7 @@ router.post('/workflow/research', requireAuth, async (req, res) => {
             const ideas = await generateIdeasFromResearch(postText, news);
 
             // Save Research
-            await supabase.from('posts_pablo').insert({
+            await supabase.from(process.env.DB_TABLE_POSTS!).insert({
                 user_id: user.id,
                 original_content: postText, // The "Search Result"
                 type: 'research',
@@ -329,7 +335,7 @@ router.post('/cron/research', async (req: Request, res: Response) => {
 router.get('/posts', requireAuth, async (req, res) => {
     const supabase = getUserSupabase(req);
     const { data, error } = await supabase
-        .from('posts_pablo')
+        .from(process.env.DB_TABLE_POSTS!)
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -350,7 +356,7 @@ router.patch('/posts/:id', requireAuth, async (req, res) => {
         return;
     }
 
-    const { data, error } = await supabase.from('posts_pablo')
+    const { data, error } = await supabase.from(process.env.DB_TABLE_POSTS!)
         .update({ status })
         .eq('id', id)
         .select()
@@ -368,7 +374,7 @@ router.delete('/posts/:id', requireAuth, async (req, res) => {
     const supabase = getUserSupabase(req);
 
     const { error } = await supabase
-        .from('posts_pablo')
+        .from(process.env.DB_TABLE_POSTS!)
         .delete()
         .eq('id', id);
 
@@ -390,7 +396,7 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
 
     try {
         // Step 1: Get User Profile with settings
-        const { data: profile } = await supabase.from('profiles_pablo').select('*').single();
+        const { data: profile } = await supabase.from(process.env.DB_TABLE_PROFILES!).select('*').single();
         if (!profile) {
             res.status(400).json({ error: "Profile not found. Configure your settings first." });
             return;
@@ -436,7 +442,7 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
             }
         } else {
             // Get posts from monitored creators
-            const { data: creators } = await supabase.from('creators_pablo').select('linkedin_url');
+            const { data: creators } = await supabase.from(process.env.DB_TABLE_CREATORS!).select('linkedin_url');
 
             if (!creators || creators.length === 0) {
                 res.status(400).json({ error: "No creators configured. Add creators in Settings." });
@@ -499,7 +505,7 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
             const rewritten = await regeneratePost(structureJson || '', filteredContent, customInstructions);
 
             // Save to DB
-            const { error: insertError } = await supabase.from('posts_pablo').insert({
+            const { error: insertError } = await supabase.from(process.env.DB_TABLE_POSTS!).insert({
                 user_id: user.id,
                 original_post_id: post.id || 'unknown',
                 original_url: post.linkedinUrl || post.url || post.postUrl || post.socialUrl || '',

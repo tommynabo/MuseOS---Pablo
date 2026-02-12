@@ -45,7 +45,7 @@ const App: React.FC = () => {
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from(import.meta.env.VITE_DB_TABLE_PROFILES)
         .select('*')
         .eq('user_id', userId)
         .single();
@@ -176,7 +176,7 @@ const App: React.FC = () => {
     if (session?.user) {
       try {
         const { error } = await supabase
-          .from('profiles')
+          .from(import.meta.env.VITE_DB_TABLE_PROFILES)
           .upsert({
             id: session.user.id, // ID must equal user_id due to DB constraint
             user_id: session.user.id,
