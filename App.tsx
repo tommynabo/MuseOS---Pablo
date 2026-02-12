@@ -47,7 +47,7 @@ const App: React.FC = () => {
       const { data, error } = await supabase
         .from(import.meta.env.VITE_DB_TABLE_PROFILES || 'profiles_pablo')
         .select('*')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
 
       if (data) {
@@ -178,8 +178,7 @@ const App: React.FC = () => {
         const { error } = await supabase
           .from(import.meta.env.VITE_DB_TABLE_PROFILES || 'profiles_pablo')
           .upsert({
-            id: session.user.id, // ID must equal user_id due to DB constraint
-            user_id: session.user.id,
+            id: session.user.id,
             tone: updated.tone,
             niche_keywords: updated.nicheKeywords,
             custom_instructions: updated.customInstructions,
