@@ -27,8 +27,8 @@ interface ScheduleExecution {
   error_message?: string;
 }
 
-const TABLE_SCHEDULES = 'schedules';
-const TABLE_EXECUTIONS = 'schedule_executions';
+const TABLE_SCHEDULES = process.env.DB_TABLE_SCHEDULES || 'schedules_pablo';
+const TABLE_EXECUTIONS = process.env.DB_TABLE_EXECUTIONS || 'schedule_executions_pablo';
 
 let activeJobs: Map<string, cron.ScheduledTask> = new Map();
 
