@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       proxy: {
         '/api': {
-          target: 'http://localhost:3001',
+          target: 'http://localhost:3001', // Pablo uses 3001 (Lilih uses 3002)
           changeOrigin: true,
           secure: false,
         }

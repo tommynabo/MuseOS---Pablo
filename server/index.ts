@@ -7,7 +7,7 @@ import { initializeSchedules } from './services/schedulerService';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3001; // Pablo uses 3001 (Lilih uses 3002)
 
 app.use(cors());
 app.use(express.json());
