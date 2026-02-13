@@ -719,8 +719,9 @@ router.get('/schedule/executions', requireAuth, async (req: Request, res: Respon
             return;
         }
 
+        const TABLE_EXECUTIONS = process.env.DB_TABLE_EXECUTIONS || 'schedule_executions_pablo';
         const { data: executions, error } = await supabaseAdmin
-            .from('schedule_executions')
+            .from(TABLE_EXECUTIONS)
             .select('*')
             .eq('user_id', user.id)
             .order('executed_at', { ascending: false })
