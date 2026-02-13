@@ -664,7 +664,7 @@ router.get('/schedule', requireAuth, async (req: any, res) => {
         }
 
         const { data, error } = await supabaseAdmin!
-            .from('schedules')
+            .from(process.env.DB_TABLE_SCHEDULES || 'schedules_pablo')
             .select('*')
             .eq('user_id', user.id);
 
@@ -708,7 +708,7 @@ router.post('/schedule', requireAuth, async (req: any, res) => {
 
         // Check if schedule exists
         const { data: existing } = await supabaseAdmin!
-            .from('schedules')
+            .from(process.env.DB_TABLE_SCHEDULES || 'schedules_pablo')
             .select('id')
             .eq('user_id', user.id)
             .single();
@@ -726,7 +726,7 @@ router.post('/schedule', requireAuth, async (req: any, res) => {
         if (existing) {
             // Update existing schedule
             const { data, error } = await supabaseAdmin!
-                .from('schedules')
+                .from(process.env.DB_TABLE_SCHEDULES || 'schedules_pablo')
                 .update(scheduleData)
                 .eq('id', existing.id)
                 .select()
@@ -736,7 +736,7 @@ router.post('/schedule', requireAuth, async (req: any, res) => {
         } else {
             // Create new schedule
             const { data, error } = await supabaseAdmin!
-                .from('schedules')
+                .from(process.env.DB_TABLE_SCHEDULES || 'schedules_pablo')
                 .insert(scheduleData)
                 .select()
                 .single();
@@ -766,7 +766,7 @@ router.put('/schedule/toggle', requireAuth, async (req: any, res) => {
         }
 
         const { data: schedules, error: fetchError } = await supabaseAdmin!
-            .from('schedules')
+            .from(process.env.DB_TABLE_SCHEDULES || 'schedules_pablo')
             .select('*')
             .eq('user_id', user.id);
 
@@ -777,7 +777,7 @@ router.put('/schedule/toggle', requireAuth, async (req: any, res) => {
 
         const currentSchedule = schedules[0];
         const { data: updated, error: updateError } = await supabaseAdmin!
-            .from('schedules')
+            .from(process.env.DB_TABLE_SCHEDULES || 'schedules_pablo')
             .update({ enabled: !currentSchedule.enabled })
             .eq('id', currentSchedule.id)
             .select()
@@ -807,7 +807,7 @@ router.get('/schedule/executions', requireAuth, async (req: any, res) => {
         }
 
         const { data: executions, error } = await supabaseAdmin!
-            .from('schedule_executions')
+            .from(process.env.DB_TABLE_EXECUTIONS || 'schedule_executions_pablo')
             .select('*')
             .eq('user_id', user.id)
             .order('executed_at', { ascending: false })
