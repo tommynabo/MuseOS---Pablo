@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference path="./index.d.ts" />
 
 interface ImportMetaEnv {
     readonly VITE_SUPABASE_URL: string
