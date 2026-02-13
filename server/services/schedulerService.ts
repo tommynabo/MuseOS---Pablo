@@ -161,11 +161,16 @@ async function executeScheduledWorkflow(
       `[SchedulerService] Executing scheduled workflow for user ${userId}`
     );
 
+    // Get table names from environment or use defaults
+    const TABLE_PROFILES = process.env.DB_TABLE_PROFILES || 'profiles_pablo';
+    const TABLE_CREATORS = process.env.DB_TABLE_CREATORS || 'creators_pablo';
+    const TABLE_POSTS = process.env.DB_TABLE_POSTS || 'posts_pablo';
+
     // 1. Obtener perfil del usuario
     const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
+      .from(TABLE_PROFILES)
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (profileError || !profile) {
@@ -178,19 +183,17 @@ async function executeScheduledWorkflow(
     // 2. Obtener keywords o creadores según la fuente
     if (source === 'keywords') {
       const { data: creatorData } = await supabaseAdmin
-        .from('creators')
-        .select('keywords')
-        .eq('user_id', userId)
-        .eq('enabled', true);
+        .from(TABLE_CREATORS)
+        .select('*')
+        .eq('user_id', userId);
 
       // Extraer keywords de los creadores
       keywords = creatorData?.flatMap((c: any) => c.keywords || []) || [];
     } else {
       const { data: creatorData } = await supabaseAdmin
-        .from('creators')
-        .select('name, url')
-        .eq('user_id', userId)
-        .eq('enabled', true);
+        .from(TABLE_CREATORS)
+        .select('*')
+        .eq('user_id', userId);
 
       creators = creatorData || [];
     }
@@ -214,9 +217,12 @@ async function executeScheduledWorkflow(
             const authorName = (post.author as any)?.name || 'Unknown';
 
             generatedPosts.push({
-              title: `Post from ${authorName}`,
-              content: outline,
-              source_url: post.url || post.postUrl || '',
+              original_post_id: post.id || 'unknown',
+              original_author: authorName,
+              original_content: postContent,
+              original_url: post.url || post.postUrl || '',
+              generated_content: outline,
+              type: 'research',
               status: 'idea',
               user_id: userId,
               created_at: new Date()
@@ -226,15 +232,16 @@ async function executeScheduledWorkflow(
           }
         }
 
-        // 5. Guardar en BD
+        // 5. Guardar en BD (con tabla correcta)
         if (generatedPosts.length > 0) {
           const { error: insertError } = await supabaseAdmin
-            .from('posts')
+            .from(TABLE_POSTS)
             .insert(generatedPosts);
 
           if (insertError) {
             throw new Error(`Failed to save posts: ${insertError.message}`);
           }
+          console.log(`[SchedulerService] ✅ Saved ${generatedPosts.length} posts to ${TABLE_POSTS}`);
         }
       }
     }
