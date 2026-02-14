@@ -369,6 +369,190 @@ const router = express.Router();
 
 router.get('/health', (_, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
+// ===== CRON / AUTOPILOT ENDPOINT =====
+// Called by Vercel Cron (hourly) or manually via ?run_all=true
+router.get('/cron', async (req: Request, res: Response) => {
+    const runAll = req.query.run_all === 'true';
+
+    try {
+        if (!supabaseAdmin) {
+            return res.status(503).json({ error: 'Supabase not configured' });
+        }
+
+        console.log('[Cron] Checking for due schedules...');
+        const now = new Date();
+
+        // 1. Fetch all ENABLED schedules
+        const TABLE_SCHEDULES = process.env.DB_TABLE_SCHEDULES || 'schedules_pablo';
+        const TABLE_EXECUTIONS = process.env.DB_TABLE_EXECUTIONS || 'schedule_executions_pablo';
+        const TABLE_PROFILES_CRON = process.env.DB_TABLE_PROFILES || 'profiles_pablo';
+        const TABLE_CREATORS_CRON = process.env.DB_TABLE_CREATORS || 'creators_pablo';
+        const TABLE_POSTS_CRON = process.env.DB_TABLE_POSTS || 'posts_pablo';
+
+        const { data: schedules, error: schedErr } = await supabaseAdmin
+            .from(TABLE_SCHEDULES)
+            .select('*')
+            .eq('enabled', true);
+
+        if (schedErr) throw schedErr;
+        if (!schedules || schedules.length === 0) {
+            return res.json({ success: true, message: 'No active schedules found', results: [] });
+        }
+
+        // 2. Filter schedules that are due NOW (in user's timezone)
+        const dueSchedules = schedules.filter(schedule => {
+            if (runAll) return true;
+            try {
+                const tz = schedule.timezone || 'Europe/Madrid';
+                const userTime = now.toLocaleTimeString('en-GB', { timeZone: tz, hour12: false, hour: '2-digit', minute: '2-digit' });
+                const [userHour] = userTime.split(':').map(Number);
+                const [schedHour] = schedule.time.split(':').map(Number);
+                return userHour >= schedHour;
+            } catch { return false; }
+        });
+
+        console.log(`[Cron] ${dueSchedules.length} due out of ${schedules.length} total`);
+        const results: any[] = [];
+
+        // 3. Execute workflow for each due schedule
+        for (const schedule of dueSchedules) {
+            // Skip if already executed today
+            const lastExec = schedule.last_execution ? new Date(schedule.last_execution) : null;
+            const alreadyToday = lastExec &&
+                lastExec.getDate() === now.getDate() &&
+                lastExec.getMonth() === now.getMonth() &&
+                lastExec.getFullYear() === now.getFullYear();
+
+            if (alreadyToday && !runAll) {
+                console.log(`[Cron] Skipping ${schedule.id} (already ran today)`);
+                continue;
+            }
+
+            console.log(`[Cron] Running for user ${schedule.user_id}, source=${schedule.source}, count=${schedule.count}`);
+
+            try {
+                // Get user profile
+                const { data: profile } = await supabaseAdmin
+                    .from(TABLE_PROFILES_CRON).select('*').eq('id', schedule.user_id).single();
+                if (!profile) { throw new Error('Profile not found'); }
+
+                const keywords: string[] = profile.niche_keywords || [];
+                const customInstructions = profile.custom_instructions || '';
+                const targetCount = Math.min(schedule.count || 1, 5);
+
+                // Prepare queries
+                let searchQueries: string[] = [];
+                let creatorUrls: string[] = [];
+
+                if (schedule.source === 'keywords') {
+                    if (keywords.length === 0) throw new Error('No keywords configured');
+                    const activeKW = keywords.slice(0, 3);
+                    const expandedLists = await Promise.all(activeKW.map((k: string) => expandSearchQuery(k)));
+                    const rawQ = [...new Set([...activeKW, ...expandedLists.flat()])];
+                    searchQueries = rawQ.filter(q => typeof q === 'string' && q.trim().length > 0).slice(0, 3);
+                } else {
+                    const { data: creators } = await supabaseAdmin
+                        .from(TABLE_CREATORS_CRON).select('linkedin_url').eq('user_id', schedule.user_id);
+                    creatorUrls = (creators || [])
+                        .map((c: any) => c.linkedin_url)
+                        .filter((u: any) => typeof u === 'string' && u.trim().length > 0)
+                        .slice(0, 5);
+                    if (creatorUrls.length === 0) throw new Error('No creators configured');
+                }
+
+                // Fetch posts
+                let rawPosts: ApifyPost[] = [];
+                if (schedule.source === 'keywords') {
+                    const fetched = await Promise.all(searchQueries.map(q => searchLinkedInPosts([q], targetCount * 2)));
+                    rawPosts = fetched.flat();
+                } else {
+                    rawPosts = await getCreatorPosts(creatorUrls, targetCount * 2);
+                }
+
+                if (rawPosts.length === 0) throw new Error('No posts found from sources');
+
+                // Evaluate best posts
+                const bestPosts = await evaluatePostEngagement(rawPosts);
+                const toProcess = bestPosts.slice(0, targetCount).filter(p => extractPostText(p).length >= 30);
+
+                if (toProcess.length === 0) throw new Error('All posts filtered out (too short/low quality)');
+
+                // Generate in parallel (same pipeline as manual generator)
+                let savedCount = 0;
+                const genResults = await Promise.allSettled(toProcess.map(async (post) => {
+                    const postText = extractPostText(post);
+                    const filtered = filterSensitiveData(postText);
+                    const structure = await extractPostStructure(filtered);
+                    const rewritten = await regeneratePost(structure, filtered, customInstructions);
+                    if (!rewritten || rewritten.length < 20) throw new Error('Rewrite too short');
+
+                    let analysisObj: any = {};
+                    try { analysisObj = JSON.parse(structure); } catch {}
+                    const postUrl = post.linkedinUrl || post.url || post.postUrl || post.socialUrl || '';
+
+                    const { error: insertErr } = await supabaseAdmin!
+                        .from(TABLE_POSTS_CRON).insert({
+                            user_id: schedule.user_id,
+                            original_post_id: post.id || 'unknown',
+                            original_url: postUrl,
+                            original_author: post.author?.name || post.authorName || 'Unknown',
+                            original_content: postText,
+                            generated_content: rewritten,
+                            type: schedule.source === 'keywords' ? 'research' : 'parasite',
+                            status: 'idea',
+                            meta: {
+                                structure: analysisObj,
+                                original_url: postUrl,
+                                engagement: { likes: getMetric(post, 'likes'), comments: getMetric(post, 'comments') },
+                                ai_analysis: {
+                                    hook: analysisObj.hook || null,
+                                    narrative_arc: analysisObj.narrative_arc || null,
+                                    emotional_triggers: analysisObj.emotional_triggers || null,
+                                    virality_score: analysisObj.virality_score || null,
+                                    structural_blueprint: analysisObj.structural_blueprint || null,
+                                    replication_strategy: analysisObj.replication_strategy || null
+                                },
+                                generated_by: 'autopilot'
+                            }
+                        });
+                    if (insertErr) throw new Error(`DB insert: ${insertErr.message}`);
+                    return true;
+                }));
+
+                savedCount = genResults.filter(r => r.status === 'fulfilled').length;
+                console.log(`[Cron] User ${schedule.user_id}: ${savedCount}/${toProcess.length} posts generated`);
+
+                // Log execution
+                await supabaseAdmin.from(TABLE_EXECUTIONS).insert({
+                    schedule_id: schedule.id, user_id: schedule.user_id,
+                    executed_at: now, status: savedCount > 0 ? 'success' : 'failed',
+                    posts_generated: savedCount
+                });
+
+                // Update last_execution
+                await supabaseAdmin.from(TABLE_SCHEDULES)
+                    .update({ last_execution: now }).eq('id', schedule.id);
+
+                results.push({ user: schedule.user_id, success: true, posts: savedCount });
+
+            } catch (userErr: any) {
+                console.error(`[Cron] Error for user ${schedule.user_id}:`, userErr.message);
+                await supabaseAdmin.from(TABLE_EXECUTIONS).insert({
+                    schedule_id: schedule.id, user_id: schedule.user_id,
+                    executed_at: now, status: 'failed', posts_generated: 0,
+                    error_message: userErr.message
+                }).catch(() => {});
+                results.push({ user: schedule.user_id, success: false, error: userErr.message });
+            }
+        }
+
+        res.json({ success: true, message: `Processed ${results.length} schedules`, results });
+    } catch (error: any) {
+        console.error('[Cron] Fatal error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.get('/creators', requireAuth, async (req, res) => {
     const supabase = getUserSupabase(req);
     const { data, error } = await supabase.from(process.env.DB_TABLE_CREATORS || 'creators_pablo').select('*');

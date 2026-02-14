@@ -1,4 +1,3 @@
-import cron from 'node-cron';
 import { supabaseAdmin } from '../db';
 import { generatePostOutline, generateIdeasFromResearch } from './openaiService';
 import { searchLinkedInPosts } from './apifyService';
@@ -31,7 +30,7 @@ const TABLE_SCHEDULES = process.env.DB_TABLE_SCHEDULES || 'schedules_pablo';
 const TABLE_EXECUTIONS = process.env.DB_TABLE_EXECUTIONS || 'schedule_executions_pablo';
 
 let activeJobs: Map<string, cron.ScheduledTask> = new Map();
-
+/* Removed node-cron logic for serverless compatibility */
 /**
  * Convierte hora HH:MM a expresión cron (UTC)
  * Por ahora asumimos UTC. En producción usar librería de timezones.
@@ -150,12 +149,12 @@ export const logScheduleExecution = async (
 /**
  * Ejecuta el workflow de generación automática
  */
-async function executeScheduledWorkflow(
+export const executeScheduledWorkflow = async (
   scheduleId: string,
   userId: string,
   source: 'keywords' | 'creators',
   count: number
-): Promise<{ success: boolean; postsGenerated: number; error?: string }> {
+): Promise<{ success: boolean; postsGenerated: number; error?: string }> => {
   try {
     console.log(
       `[SchedulerService] Executing scheduled workflow for user ${userId}`
@@ -280,90 +279,35 @@ async function executeScheduledWorkflow(
 
 /**
  * Inicia un job cron para un schedule específico
+ * (DEPRECATED in Serverless - Now handled by Vercel Cron + /api/cron)
  */
 export const startScheduleJob = (scheduleConfig: ScheduleConfig): void => {
-  const jobId = `${scheduleConfig.user_id}_${scheduleConfig.id}`;
-
-  // No activar si ya existe o si está deshabilitado
-  if (activeJobs.has(jobId) || !scheduleConfig.enabled) {
-    return;
-  }
-
-  const cronExpression = timeToCronExpression(scheduleConfig.time);
-
-  try {
-    const task = cron.schedule(cronExpression, async () => {
-      console.log(
-        `[SchedulerService] ⏰ Executing schedule for user ${scheduleConfig.user_id}`
-      );
-      await executeScheduledWorkflow(
-        scheduleConfig.id!,
-        scheduleConfig.user_id,
-        scheduleConfig.source,
-        scheduleConfig.count
-      );
-    });
-
-    activeJobs.set(jobId, task);
-    console.log(`[SchedulerService] ✅ Schedule job started: ${jobId}`);
-  } catch (error) {
-    console.error(`[SchedulerService] Error starting job ${jobId}:`, error);
-  }
+  // Logic moved to /api/cron.ts
+  console.log(`[SchedulerService] Schedule configured for user ${scheduleConfig.user_id} (Serverless Mode)`);
 };
 
 /**
  * Detiene un job cron específico
+ * (DEPRECATED in Serverless)
  */
 export const stopScheduleJob = (scheduleId: string, userId: string): void => {
-  const jobId = `${userId}_${scheduleId}`;
-
-  if (activeJobs.has(jobId)) {
-    const task = activeJobs.get(jobId);
-    task?.stop();
-    activeJobs.delete(jobId);
-    console.log(`[SchedulerService] ✅ Schedule job stopped: ${jobId}`);
-  }
+   // Logic moved to /api/cron.ts
+   console.log(`[SchedulerService] Schedule stopped for user ${userId} (Serverless Mode)`);
 };
 
 /**
  * Detiene todos los jobs
+ * (DEPRECATED in Serverless)
  */
 export const stopAllScheduleJobs = (): void => {
-  activeJobs.forEach((task) => {
-    task.stop();
-  });
-  activeJobs.clear();
-  console.log('[SchedulerService] ✅ All schedule jobs stopped');
+  // No-op
 };
 
 /**
  * Inicializa todos los schedules activos para todos los usuarios
- * Debería llamarse al iniciar el servidor
+ * (DEPRECATED in Serverless)
  */
 export const initializeSchedules = async (): Promise<void> => {
-  try {
-    console.log('[SchedulerService] 🚀 Initializing all schedules...');
-
-    const { data: schedules, error } = await supabaseAdmin
-      .from(TABLE_SCHEDULES)
-      .select('*')
-      .eq('enabled', true);
-
-    if (error) throw error;
-
-    if (!schedules || schedules.length === 0) {
-      console.log('[SchedulerService] No active schedules found');
-      return;
-    }
-
-    schedules.forEach((schedule) => {
-      startScheduleJob(schedule);
-    });
-
-    console.log(
-      `[SchedulerService] ✅ Initialized ${schedules.length} schedules`
-    );
-  } catch (error) {
-    console.error('[SchedulerService] Error initializing schedules:', error);
-  }
+   // No-op
+   console.log('[SchedulerService] Serverless environment: Skipping in-memory schedule initialization.');
 };
