@@ -537,11 +537,13 @@ router.get('/cron', async (req: Request, res: Response) => {
 
             } catch (userErr: any) {
                 console.error(`[Cron] Error for user ${schedule.user_id}:`, userErr.message);
-                await supabaseAdmin.from(TABLE_EXECUTIONS).insert({
-                    schedule_id: schedule.id, user_id: schedule.user_id,
-                    executed_at: now, status: 'failed', posts_generated: 0,
-                    error_message: userErr.message
-                }).catch(() => {});
+                try {
+                    await supabaseAdmin!.from(TABLE_EXECUTIONS).insert({
+                        schedule_id: schedule.id, user_id: schedule.user_id,
+                        executed_at: now, status: 'failed', posts_generated: 0,
+                        error_message: userErr.message
+                    });
+                } catch (_) { /* ignore logging error */ }
                 results.push({ user: schedule.user_id, success: false, error: userErr.message });
             }
         }
