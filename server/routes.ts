@@ -349,16 +349,25 @@ router.get('/posts', requireAuth, async (req, res) => {
  */
 router.patch('/posts/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, generated_content, meta } = req.body;
     const supabase = getUserSupabase(req);
 
-    if (!['idea', 'drafted', 'approved', 'posted'].includes(status)) {
+    // Validate status if provided
+    if (status && !['idea', 'drafted', 'approved', 'posted'].includes(status)) {
         res.status(400).json({ error: "Invalid status" });
         return;
     }
 
+    // Prepare update object dynamically
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    if (generated_content) updateData.generated_content = generated_content;
+    if (meta) updateData.meta = meta;
+
+    updateData.updated_at = new Date();
+
     const { data, error } = await supabase.from(process.env.DB_TABLE_POSTS || 'posts_pablo')
-        .update({ status })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();

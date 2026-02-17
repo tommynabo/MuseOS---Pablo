@@ -129,22 +129,57 @@ const App: React.FC = () => {
     setSelectedIdea(idea);
   };
 
-  const handleSaveContent = (updated: ContentPiece) => {
+  const handleSaveContent = async (updated: ContentPiece) => {
+    // 1. Optimistic Update
     setContentPieces(prev => prev.map(p => p.id === updated.id ? updated : p));
     setSelectedIdea(null);
+
+    // 2. Persist to Backend
+    try {
+      const { updatePostStatus } = await import('./services/geminiService');
+      // We pass the status, content, and potential meta (like hook)
+      // generatedDraft.hook is part of the draft, but our backend 'meta' usually stores the 'structure' or 'ai_analysis'.
+      // However, if we want to save the HOOK, we might need to map it if it's stored in meta.
+      // Looking at refreshPosts mapping:
+      // const hookText = analysis?.hook?.text || p.meta?.outline?.split('\n')[2] ...
+      // So hook is implicitly part of content or meta.
+      // For now, let's send the hook in meta if possible, or just the content.
+      // The updatePostStatus function allows sending 'meta'.
+
+      const metaUpdate = {
+        ...updated.aiAnalysis,
+        hook: { text: updated.generatedDraft.hook } // Ensure hook is saved in meta if consistent with schema
+      };
+
+      await updatePostStatus(
+        updated.id,
+        updated.status,
+        updated.generatedDraft.body,
+        metaUpdate
+      );
+    } catch (error) {
+      console.error("Failed to save content:", error);
+      alert("Error al guardar en la base de datos.");
+    }
   };
 
   /* New Handlers for Optimistic Updates */
-  const handleUpdatePost = async (postId: string, newStatus: 'idea' | 'drafted' | 'approved' | 'posted') => {
+  const handleUpdatePost = async (postId: string, newStatus: 'idea' | 'drafted' | 'approved' | 'posted', content?: string, meta?: any) => {
     // 1. Optimistic Update
     setContentPieces(prev => prev.map(p =>
-      p.id === postId ? { ...p, status: newStatus } : p
+      p.id === postId ? {
+        ...p,
+        status: newStatus,
+        generatedDraft: content ? { ...p.generatedDraft, body: content } : p.generatedDraft,
+        // Merge meta if provided (e.g. updated hook)
+        aiAnalysis: meta ? { ...p.aiAnalysis, ...meta } : p.aiAnalysis
+      } : p
     ));
 
     // 2. API Call (background)
     try {
       const { updatePostStatus } = await import('./services/geminiService');
-      await updatePostStatus(postId, newStatus);
+      await updatePostStatus(postId, newStatus, content, meta);
     } catch (error) {
       console.error("Failed to update post status:", error);
       // Revert on failure (could be improved with a history stack)

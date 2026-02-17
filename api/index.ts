@@ -487,7 +487,7 @@ router.get('/cron', async (req: Request, res: Response) => {
                     if (!rewritten || rewritten.length < 20) throw new Error('Rewrite too short');
 
                     let analysisObj: any = {};
-                    try { analysisObj = JSON.parse(structure); } catch {}
+                    try { analysisObj = JSON.parse(structure); } catch { }
                     const postUrl = post.linkedinUrl || post.url || post.postUrl || post.socialUrl || '';
 
                     const { error: insertErr } = await supabaseAdmin!
@@ -592,9 +592,20 @@ router.get('/posts', requireAuth, async (req, res) => {
 
 router.patch('/posts/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, generated_content, meta } = req.body;
     const supabase = getUserSupabase(req);
-    const { data, error } = await supabase.from(process.env.DB_TABLE_POSTS || 'posts_pablo').update({ status }).eq('id', id).select().single();
+
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    if (generated_content) updateData.generated_content = generated_content;
+    if (meta) updateData.meta = meta;
+    updateData.updated_at = new Date();
+
+    const { data, error } = await supabase.from(process.env.DB_TABLE_POSTS || 'posts_pablo')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
 });
@@ -844,7 +855,7 @@ router.get('/schedule', requireAuth, async (req: any, res) => {
     try {
         const supabase = getUserSupabase(req);
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+
         if (userError || !user) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
@@ -872,7 +883,7 @@ router.post('/schedule', requireAuth, async (req: any, res) => {
     try {
         const supabase = getUserSupabase(req);
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+
         if (userError || !user) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
@@ -946,7 +957,7 @@ router.put('/schedule/toggle', requireAuth, async (req: any, res) => {
     try {
         const supabase = getUserSupabase(req);
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+
         if (userError || !user) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
@@ -970,7 +981,7 @@ router.put('/schedule/toggle', requireAuth, async (req: any, res) => {
             .single();
 
         if (updateError) throw updateError;
-        
+
         res.json({
             status: 'success',
             message: `Schedule ${updated.enabled ? 'enabled' : 'disabled'}`,
@@ -987,7 +998,7 @@ router.get('/schedule/executions', requireAuth, async (req: any, res) => {
     try {
         const supabase = getUserSupabase(req);
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+
         if (userError || !user) {
             return res.status(401).json({ error: 'Unauthorized' });
         }

@@ -1,15 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ContentPiece } from '../types';
 import IdeaCard from './IdeaCard';
-import { updatePostStatus } from '../services/geminiService';
-import { PenTool, CheckCircle, Clock, ChevronRight, ExternalLink } from 'lucide-react';
+import LinkedInPreview from './LinkedInPreview';
+import { PenTool, CheckCircle, Clock, ChevronRight, ExternalLink, Trash2 } from 'lucide-react';
 
 interface ContentManagerProps {
   ideas: ContentPiece[];
   onSelectIdea: (idea: ContentPiece) => void;
+  onUpdatePost: (id: string, status: 'idea' | 'drafted' | 'approved' | 'posted', content?: string, meta?: any) => void;
+  onDeletePost: (id: string) => void;
 }
 
 const ContentManager: React.FC<ContentManagerProps> = ({ ideas, onSelectIdea, onUpdatePost, onDeletePost }) => {
+  const [draggedItem, setDraggedItem] = useState<{ item: ContentPiece; source: string } | null>(null);
+  const [previewPost, setPreviewPost] = useState<ContentPiece | null>(null);
+
   // Filter content by status
   const newIdeas = ideas.filter(i => i.status === 'idea');
   const drafts = ideas.filter(i => i.status === 'drafted');
@@ -32,9 +37,6 @@ const ContentManager: React.FC<ContentManagerProps> = ({ ideas, onSelectIdea, on
       <p className="text-gray-400 text-sm font-medium">{text}</p>
     </div>
   );
-
-  // ... inside ContentManager component ...
-  const [draggedItem, setDraggedItem] = React.useState<{ item: ContentPiece; source: string } | null>(null);
 
   const handleDragStart = (item: ContentPiece, source: string) => {
     setDraggedItem({ item, source });
@@ -145,7 +147,9 @@ const ContentManager: React.FC<ContentManagerProps> = ({ ideas, onSelectIdea, on
                             <ExternalLink size={14} />
                           </a>
                         )}
-                        <ChevronRight size={16} className="text-gray-300 group-hover:text-indigo-500 transition-colors" />
+                        <button onClick={(e) => { e.stopPropagation(); onDeletePost(item.id); }} className="text-gray-300 hover:text-red-500 transition-colors">
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </div>
                     <h3 className="font-bold text-gray-800 text-sm mb-2 leading-snug group-hover:text-indigo-700 transition-colors">{item.generatedDraft.hook}</h3>
@@ -189,10 +193,18 @@ const ContentManager: React.FC<ContentManagerProps> = ({ ideas, onSelectIdea, on
                         <div className="p-1 bg-green-100 rounded-full text-green-600"><CheckCircle size={12} /></div>
                         <span className="text-[10px] font-bold text-gray-400 uppercase">Programado</span>
                       </div>
-                      <span className="text-[10px] font-bold text-gray-400">Mañana, 09:00</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-gray-400">Mañana, 09:00</span>
+                        <button onClick={(e) => { e.stopPropagation(); onDeletePost(item.id); }} className="text-gray-300 hover:text-red-500 transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                     <h3 className="font-medium text-gray-800 text-sm leading-snug">{item.generatedDraft.hook}</h3>
-                    <button className="w-full mt-3 py-2 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:text-indigo-600 hover:border-indigo-100 transition-colors">
+                    <button
+                      onClick={() => setPreviewPost(item)}
+                      className="w-full mt-3 py-2 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg hover:text-indigo-600 hover:border-indigo-100 transition-colors flex items-center justify-center gap-2"
+                    >
                       Ver Preview
                     </button>
                   </div>
@@ -204,6 +216,15 @@ const ContentManager: React.FC<ContentManagerProps> = ({ ideas, onSelectIdea, on
           </div>
         </div>
       </div>
+
+      {previewPost && (
+        <LinkedInPreview
+          post={previewPost}
+          isOpen={!!previewPost}
+          onClose={() => setPreviewPost(null)}
+        />
+      )}
+
       <style>{`
             .custom-scrollbar::-webkit-scrollbar {
                 width: 6px;

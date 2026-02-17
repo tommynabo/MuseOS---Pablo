@@ -11,7 +11,7 @@ interface DashboardProps {
     ideas: ContentPiece[];
     onSelectIdea: (idea: ContentPiece) => void;
     onRefresh?: () => void;
-    onUpdatePost: (id: string, status: 'idea' | 'drafted' | 'approved' | 'posted') => void;
+    onUpdatePost: (id: string, status: 'idea' | 'drafted' | 'approved' | 'posted', content?: string, meta?: any) => void;
     onDeletePost: (id: string) => void;
 }
 
@@ -309,7 +309,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                                     {schedTime}
                                 </button>
                             </div>
-                            
+
                             {/* Time Picker Dropdown */}
                             {showTimePicker && (
                                 <div className="absolute top-24 z-50 bg-white border-2 border-blue-200 rounded-2xl shadow-2xl p-6 w-80">
@@ -329,11 +329,10 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                                                                     const [_, mins] = schedTime.split(':');
                                                                     setSchedTime(`${hour}:${mins}`);
                                                                 }}
-                                                                className={`w-full py-2 rounded-lg font-bold transition-all ${
-                                                                    isSelected
+                                                                className={`w-full py-2 rounded-lg font-bold transition-all ${isSelected
                                                                         ? 'bg-blue-600 text-white shadow-md'
                                                                         : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {hour}
                                                             </button>
@@ -358,11 +357,10 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                                                                 onClick={() => {
                                                                     setSchedTime(`${hours}:${mins}`);
                                                                 }}
-                                                                className={`w-full py-2 rounded-lg font-bold transition-all ${
-                                                                    isSelected
+                                                                className={`w-full py-2 rounded-lg font-bold transition-all ${isSelected
                                                                         ? 'bg-blue-600 text-white shadow-md'
                                                                         : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {mins}
                                                             </button>
@@ -375,13 +373,12 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                                     <button
                                         onClick={handleSaveTime}
                                         disabled={isSavingTime}
-                                        className={`w-full mt-4 py-2.5 font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
-                                            saveTimeSuccess
+                                        className={`w-full mt-4 py-2.5 font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${saveTimeSuccess
                                                 ? 'bg-green-500 text-white'
                                                 : isSavingTime
-                                                ? 'bg-blue-400 text-white opacity-70 cursor-not-allowed'
-                                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                                        }`}
+                                                    ? 'bg-blue-400 text-white opacity-70 cursor-not-allowed'
+                                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                            }`}
                                     >
                                         {saveTimeSuccess ? (
                                             <>
@@ -400,7 +397,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                                     </button>
                                 </div>
                             )}
-                            
+
                             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mt-2 flex items-center gap-1 pointer-events-none">
                                 <Calendar size={10} /> Hora de ejecución
                             </span>

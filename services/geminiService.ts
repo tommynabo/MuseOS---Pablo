@@ -114,12 +114,16 @@ export const fetchPosts = async () => {
   return response.json();
 };
 
-export const updatePostStatus = async (postId: string, status: 'idea' | 'drafted' | 'approved' | 'posted') => {
+export const updatePostStatus = async (postId: string, status: 'idea' | 'drafted' | 'approved' | 'posted', content?: string, meta?: any) => {
   const headers = await getHeaders();
+  const body: any = { status };
+  if (content) body.generated_content = content;
+  if (meta) body.meta = meta;
+
   const response = await fetch(`${API_URL}/posts/${postId}`, {
     method: 'PATCH',
     headers,
-    body: JSON.stringify({ status })
+    body: JSON.stringify(body)
   });
   if (!response.ok) {
     throw new Error('Failed to update post status');
