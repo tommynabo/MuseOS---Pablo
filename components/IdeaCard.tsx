@@ -197,28 +197,38 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ item, onClick, onDelete, onFeedback
         </button>
       )}
 
-      {/* Feedback Thumbs */}
+      {/* Feedback Thumbs - Prominent Bottom Buttons */}
       {onFeedback && item.status === 'idea' && (
-        <div className="absolute bottom-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="mt-6 pt-6 border-t border-gray-100 flex gap-3">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onFeedback(item.id, 'like');
             }}
-            className={`p-1.5 rounded-md transition-colors ${item.feedback === 'like' ? 'bg-emerald-100 text-emerald-600' : 'text-gray-400 hover:bg-gray-100 hover:text-emerald-500'}`}
+            className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+              item.feedback === 'like'
+                ? 'bg-emerald-500 text-white shadow-md'
+                : 'bg-gray-50 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 border border-gray-200'
+            }`}
             title="Me gusta esta idea"
           >
-            <ThumbsUp size={16} className={item.feedback === 'like' ? 'fill-current' : ''} />
+            <ThumbsUp size={18} className={item.feedback === 'like' ? 'fill-current' : ''} />
+            Me gusta
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onFeedback(item.id, 'dislike');
             }}
-            className={`p-1.5 rounded-md transition-colors ${item.feedback === 'dislike' ? 'bg-red-100 text-red-600' : 'text-gray-400 hover:bg-gray-100 hover:text-red-500'}`}
+            className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+              item.feedback === 'dislike'
+                ? 'bg-red-500 text-white shadow-md'
+                : 'bg-gray-50 text-gray-700 hover:bg-red-50 hover:text-red-600 border border-gray-200'
+            }`}
             title="No me gusta esta idea"
           >
-            <ThumbsDown size={16} className={item.feedback === 'dislike' ? 'fill-current' : ''} />
+            <ThumbsDown size={18} className={item.feedback === 'dislike' ? 'fill-current' : ''} />
+            No me gusta
           </button>
         </div>
       )}

@@ -15,6 +15,35 @@ const ContentManager: React.FC<ContentManagerProps> = ({ ideas, onSelectIdea, on
   const [draggedItem, setDraggedItem] = useState<{ item: ContentPiece; source: string } | null>(null);
   const [previewPost, setPreviewPost] = useState<ContentPiece | null>(null);
 
+  // Handle feedback (like/dislike)
+  const handleFeedback = async (id: string, feedback: 'like' | 'dislike') => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          postId: parseInt(id),
+          feedback: feedback
+        })
+      });
+
+      if (response.ok) {
+        // Update local state with feedback
+        const updatedIdeas = ideas.map(idea => 
+          idea.id === id ? { ...idea, feedback } : idea
+        );
+        // Trigger re-render via parent by getting new ideas
+        console.log(`[Feedback] Saved ${feedback} for post ${id}`);
+      }
+    } catch (error) {
+      console.error('Error saving feedback:', error);
+    }
+  };
+
   // Filter content by status
   const newIdeas = ideas.filter(i => i.status === 'idea');
   const drafts = ideas.filter(i => i.status === 'drafted');
@@ -98,7 +127,7 @@ const ContentManager: React.FC<ContentManagerProps> = ({ ideas, onSelectIdea, on
                 draggable
                 onDragStart={() => handleDragStart(item, 'idea')}
               >
-                <IdeaCard item={item} onClick={onSelectIdea} onDelete={onDeletePost} />
+                <IdeaCard item={item} onClick={onSelectIdea} onDelete={onDeletePost} onFeedback={handleFeedback} />
               </div>
             ))}
             {newIdeas.length === 0 && <EmptyState text="Sin nuevas ideas" />}

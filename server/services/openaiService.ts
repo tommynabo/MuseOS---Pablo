@@ -1,10 +1,83 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import { supabaseAdmin } from '../db';
+
 dotenv.config();
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
+
+/**
+ * 🧠 BRAIN FUNCTION: Build Preferences Context from User Feedback
+ * Analyzes user's likes/dislikes to create a preferences context for AI alignment
+ */
+export const buildPreferencesContext = async (userId: string): Promise<string> => {
+    try {
+        // Query posts with feedback (meta.feedback exists)
+        const { data: postsWithFeedback } = await supabaseAdmin
+            .from(process.env.DB_TABLE_POSTS || 'posts_pablo')
+            .select('original_content, generated_content, meta')
+            .eq('user_id', userId)
+            .not('meta', 'is', null);
+
+        if (!postsWithFeedback || postsWithFeedback.length === 0) {
+            return ''; // No feedback yet, return empty context
+        }
+
+        // Extract feedback data
+        const likes: string[] = [];
+        const dislikes: string[] = [];
+
+        postsWithFeedback.forEach((post: any) => {
+            const meta = post.meta || {};
+            if (meta.feedback === 'like') {
+                likes.push(post.original_content?.substring(0, 100) || '');
+            } else if (meta.feedback === 'dislike') {
+                dislikes.push(post.original_content?.substring(0, 100) || '');
+            }
+        });
+
+        // Only generate context if there's feedback
+        if (likes.length === 0 && dislikes.length === 0) {
+            return '';
+        }
+
+        // Use AI to analyze patterns in likes/dislikes
+        const analysisPrompt = `
+        Analiza los gustos y disgustos de un usuario de LinkedIn para crear un perfil de preferencias.
+        
+        POSTS QUE LE HAN GUSTADO (${likes.length}):
+        ${likes.slice(0, 10).map((l, i) => `${i + 1}. "${l}..."`).join('\n')}
+        
+        POSTS QUE NO LE HAN GUSTADO (${dislikes.length}):
+        ${dislikes.slice(0, 10).map((d, i) => `${i + 1}. "${d}..."`).join('\n')}
+        
+        Crea un perfil de preferencias EN UNA SOLA LÍNEA que describe:
+        - Temas que le interesan
+        - Formatos/ángulos que le gustan
+        - Temas a evitar
+        - Tono preferido
+        
+        Devuelve SOLO el texto, sin explicaciones.
+        `;
+
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+                { role: 'system', content: 'Eres un analista de preferencias de contenido.' },
+                { role: 'user', content: analysisPrompt }
+            ]
+        });
+
+        const preferencesContext = response.choices[0].message.content || '';
+        console.log(`[Preferences] Built context for user ${userId}: "${preferencesContext.substring(0, 100)}..."`);
+        return preferencesContext;
+    } catch (error) {
+        console.error('Error building preferences context:', error);
+        return ''; // Fail gracefully
+    }
+};
 
 /**
  * 1. QUERY EXPANSION: Transform simple keywords into intent-based search queries
@@ -170,7 +243,7 @@ export const extractPostStructure = async (originalContent: string) => {
 /**
  * 4. THE WRITER: Fill the structure with new content
  */
-export const regeneratePost = async (structureJson: string, originalContent: string, customInstructions: string) => {
+export const regeneratePost = async (structureJson: string, originalContent: string, customInstructions: string, userPreferences?: string) => {
     const systemPrompt = customInstructions || `
     Eres un redactor experto en Ghostwriting para LinkedIn.
     Tu objetivo es escribir contenido nuevo que se sienta tuyo, pero usando una estructura probada.
@@ -181,6 +254,7 @@ export const regeneratePost = async (structureJson: string, originalContent: str
     1. Tienes un "ESQUELETO ESTRUCTURAL" de un post viral.
     2. Tienes un TEMA (o usa el tema del post original si no se provee uno).
     3. ESCRIBE un post NUEVO sobre el tema, siguiendo PASO A PASO la estructura provista.
+    ${userPreferences ? `\n⭐ IMPORTANTE - PREFERENCIAS DEL USUARIO:\n${userPreferences}\nFavorecer estos temas/estilos. Evitar con severidad los que no le gustan.\n` : ''}
     
     ESTRUCTURA A SEGUIR (JSON):
     ${structureJson}

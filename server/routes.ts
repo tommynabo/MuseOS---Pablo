@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { supabaseAdmin, getSupabaseUserClient } from './db';
 import { getCreatorPosts, searchLinkedInPosts, searchGoogleNews } from './services/apifyService';
-import { generatePostOutline, regeneratePost, generateIdeasFromResearch, evaluatePostEngagement, expandSearchQuery, extractPostStructure } from './services/openaiService';
+import { generatePostOutline, regeneratePost, generateIdeasFromResearch, evaluatePostEngagement, expandSearchQuery, extractPostStructure, buildPreferencesContext } from './services/openaiService';
 import { getScheduleConfigs, saveScheduleConfig, startScheduleJob, stopScheduleJob } from './services/schedulerService';
 
 const router = express.Router();
@@ -542,8 +542,8 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
             // 3. THE ARCHITECT: Extract Structural DNA
             const structureJson = await extractPostStructure(filteredContent);
 
-            // 4. THE WRITER: Fill the structure
-            const rewritten = await regeneratePost(structureJson || '', filteredContent, enhancedInstructions);
+            // 4. THE WRITER: Fill the structure (with preferences context)
+            const rewritten = await regeneratePost(structureJson || '', filteredContent, enhancedInstructions, userPreferencesContext);
 
             // Save to DB
             const { error: insertError } = await supabase.from(process.env.DB_TABLE_POSTS || 'posts_pablo').insert({
@@ -776,6 +776,71 @@ router.get('/schedule/executions', requireAuth, async (req: Request, res: Respon
     } catch (error) {
         console.error('Error getting executions:', error);
         res.status(500).json({ error: 'Failed to get executions' });
+    }
+});
+
+/**
+ * 🧠 FEEDBACK LOOP: Save user like/dislike feedback
+ * This enables the "Brain" to learn from user preferences
+ */
+router.post('/feedback', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const { data: { user }, error: userError } = await getSupabaseUserClient(
+            (req as any).token
+        ).auth.getUser();
+
+        if (userError || !user) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+
+        const { postId, feedback } = req.body;
+
+        if (!postId || !['like', 'dislike', 'neutral'].includes(feedback)) {
+            res.status(400).json({ error: 'Invalid postId or feedback value' });
+            return;
+        }
+
+        const TABLE_POSTS = process.env.DB_TABLE_POSTS || 'posts_pablo';
+
+        // Get the post
+        const { data: post, error: getError } = await supabaseAdmin
+            .from(TABLE_POSTS)
+            .select('*')
+            .eq('id', postId)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (getError || !post) {
+            res.status(404).json({ error: 'Post not found' });
+            return;
+        }
+
+        // Update the feedback in the meta field
+        const updatedMeta = {
+            ...(post.meta || {}),
+            feedback: feedback,
+            feedback_updated_at: new Date().toISOString()
+        };
+
+        const { error: updateError } = await supabaseAdmin
+            .from(TABLE_POSTS)
+            .update({ meta: updatedMeta, updated_at: new Date().toISOString() })
+            .eq('id', postId)
+            .eq('user_id', user.id);
+
+        if (updateError) throw updateError;
+
+        console.log(`[Feedback] User ${user.id} marked post ${postId} as "${feedback}"`);
+
+        res.json({
+            status: 'success',
+            message: `Feedback saved: ${feedback}`
+        });
+
+    } catch (error: any) {
+        console.error('Error saving feedback:', error);
+        res.status(500).json({ error: error.message || 'Failed to save feedback' });
     }
 });
 
