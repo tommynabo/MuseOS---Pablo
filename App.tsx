@@ -96,6 +96,7 @@ const App: React.FC = () => {
             tags: [p.type === 'parasite' ? 'Viral' : 'Research'],
             status: p.status || 'idea',
             targetDate: p.created_at,
+            feedback: p.meta?.feedback,
             generatedDraft: {
               hook: hookText,
               body: p.generated_content || "",
@@ -172,7 +173,8 @@ const App: React.FC = () => {
         status: newStatus,
         generatedDraft: content ? { ...p.generatedDraft, body: content } : p.generatedDraft,
         // Merge meta if provided (e.g. updated hook)
-        aiAnalysis: meta ? { ...p.aiAnalysis, ...meta } : p.aiAnalysis
+        aiAnalysis: meta ? { ...p.aiAnalysis, ...meta } : p.aiAnalysis,
+        feedback: meta?.feedback !== undefined ? meta.feedback : p.feedback
       } : p
     ));
 

@@ -362,7 +362,16 @@ router.patch('/posts/:id', requireAuth, async (req, res) => {
     const updateData: any = {};
     if (status) updateData.status = status;
     if (generated_content) updateData.generated_content = generated_content;
-    if (meta) updateData.meta = meta;
+    if (meta) {
+        // Fetch current meta to avoid overwriting existing data like ai_analysis
+        const { data: currentPost, error: fetchError } = await supabase
+            .from(process.env.DB_TABLE_POSTS || 'posts_pablo')
+            .select('meta')
+            .eq('id', id)
+            .single();
+
+        updateData.meta = { ...(currentPost?.meta || {}), ...meta };
+    }
 
     updateData.updated_at = new Date();
 
@@ -415,6 +424,28 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
         const keywords = profile.niche_keywords || [];
         const customInstructions = profile.custom_instructions || '';
 
+        // Featching User Feedback History for OpenAI "Brain"
+        const { data: recentPosts } = await supabase
+            .from(process.env.DB_TABLE_POSTS || 'posts_pablo')
+            .select('original_content, meta')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        const likedPosts = recentPosts?.filter(p => p.meta?.feedback === 'like').slice(0, 10).map(p => p.original_content?.substring(0, 150)) || [];
+        const dislikedPosts = recentPosts?.filter(p => p.meta?.feedback === 'dislike').slice(0, 10).map(p => p.original_content?.substring(0, 150)) || [];
+
+        const userPreferencesContext = (likedPosts.length > 0 || dislikedPosts.length > 0) ? `
+        Contexto de Preferencias del Usuario:
+        LE GUSTA (Busca temas parecidos):
+        ${likedPosts.length > 0 ? likedPosts.map(text => `- ${text}...`).join('\n') : 'Ninguno registrado aún'}
+
+        NO LE GUSTA (DEBES EVITAR ESTOS TEMAS):
+        ${dislikedPosts.length > 0 ? dislikedPosts.map(text => `- ${text}...`).join('\n') : 'Ninguno registrado aún'}
+        ` : '';
+
+        const enhancedInstructions = customInstructions + (userPreferencesContext ? '\n\n' + userPreferencesContext : '');
+
         let allPosts: ApifyPost[] = [];
 
         console.log(`[WORKFLOW] Starting generation for ${count} posts...`);
@@ -434,7 +465,7 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
                 if (keyword.includes('"') || keyword.includes('AND')) {
                     expandedQueries.push(keyword);
                 } else {
-                    const expansion = await expandSearchQuery(keyword);
+                    const expansion = await expandSearchQuery(keyword, userPreferencesContext);
                     expandedQueries = [...expandedQueries, ...expansion];
                 }
             }
@@ -478,8 +509,8 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
         const uniquePosts = Array.from(uniquePostsMap.values());
 
         // Step 2: RELATIVE VIRALITY SCORING (The Sniffer)
-        // This function now uses the Improved Logic (Ratios)
-        const highEngagementPosts = await evaluatePostEngagement(uniquePosts);
+        // This function now uses the Improved Logic (Ratios) and User Preferences
+        const highEngagementPosts = await evaluatePostEngagement(uniquePosts, userPreferencesContext);
         console.log(`AI selected ${highEngagementPosts.length} high-engagement posts (Hidden Gems)`);
 
         if (highEngagementPosts.length === 0) {
@@ -512,7 +543,7 @@ router.post('/workflow/generate', requireAuth, async (req, res) => {
             const structureJson = await extractPostStructure(filteredContent);
 
             // 4. THE WRITER: Fill the structure
-            const rewritten = await regeneratePost(structureJson || '', filteredContent, customInstructions);
+            const rewritten = await regeneratePost(structureJson || '', filteredContent, enhancedInstructions);
 
             // Save to DB
             const { error: insertError } = await supabase.from(process.env.DB_TABLE_POSTS || 'posts_pablo').insert({

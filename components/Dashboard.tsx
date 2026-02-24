@@ -330,8 +330,8 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                                                                     setSchedTime(`${hour}:${mins}`);
                                                                 }}
                                                                 className={`w-full py-2 rounded-lg font-bold transition-all ${isSelected
-                                                                        ? 'bg-blue-600 text-white shadow-md'
-                                                                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                                                                    ? 'bg-blue-600 text-white shadow-md'
+                                                                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
                                                                     }`}
                                                             >
                                                                 {hour}
@@ -358,8 +358,8 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                                                                     setSchedTime(`${hours}:${mins}`);
                                                                 }}
                                                                 className={`w-full py-2 rounded-lg font-bold transition-all ${isSelected
-                                                                        ? 'bg-blue-600 text-white shadow-md'
-                                                                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                                                                    ? 'bg-blue-600 text-white shadow-md'
+                                                                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
                                                                     }`}
                                                             >
                                                                 {mins}
@@ -374,10 +374,10 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                                         onClick={handleSaveTime}
                                         disabled={isSavingTime}
                                         className={`w-full mt-4 py-2.5 font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${saveTimeSuccess
-                                                ? 'bg-green-500 text-white'
-                                                : isSavingTime
-                                                    ? 'bg-blue-400 text-white opacity-70 cursor-not-allowed'
-                                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                            ? 'bg-green-500 text-white'
+                                            : isSavingTime
+                                                ? 'bg-blue-400 text-white opacity-70 cursor-not-allowed'
+                                                : 'bg-blue-600 text-white hover:bg-blue-700'
                                             }`}
                                     >
                                         {saveTimeSuccess ? (
@@ -518,7 +518,16 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, ideas, onSelectIdea, onRef
                                 onDragStart={() => handleDragStart(item, 'idea')}
                                 className="cursor-move hover:opacity-75 transition-opacity"
                             >
-                                <IdeaCard item={item} onClick={onSelectIdea} onDelete={onDeletePost} />
+                                <IdeaCard
+                                    item={item}
+                                    onClick={onSelectIdea}
+                                    onDelete={onDeletePost}
+                                    onFeedback={(id, feedback) => {
+                                        // We merge the feedback into the meta object. Note that we don't have the full meta here,
+                                        // so we rely on the parent (App/Index) merging it properly, or we pass it via onUpdatePost
+                                        onUpdatePost(id, item.status, undefined, { feedback }); // We will update the parent to handle this properly
+                                    }}
+                                />
                             </div>
                         ))}
                         {newIdeas.length === 0 && <EmptyState text="Sin nuevas ideas de inversión" />}

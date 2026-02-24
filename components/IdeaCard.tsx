@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Sparkles, Quote, Trash2, Zap, AlertCircle, Target, Brain, TrendingUp, Heart, MessageCircle } from 'lucide-react';
+import { ArrowRight, Sparkles, Quote, Trash2, Zap, AlertCircle, Target, Brain, TrendingUp, Heart, MessageCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { ContentPiece } from '../types';
 import LinkedInPostLink from './LinkedInPostLink';
 
@@ -7,6 +7,7 @@ interface IdeaCardProps {
   item: ContentPiece;
   onClick: (item: ContentPiece) => void;
   onDelete?: (id: string) => void;
+  onFeedback?: (id: string, feedback: 'like' | 'dislike') => void;
 }
 
 // Virality score color gradient
@@ -26,7 +27,7 @@ function getEmotionEmoji(emotion?: string): string {
   return map[(emotion || '').toLowerCase()] || '💡';
 }
 
-const IdeaCard: React.FC<IdeaCardProps> = ({ item, onClick, onDelete }) => {
+const IdeaCard: React.FC<IdeaCardProps> = ({ item, onClick, onDelete, onFeedback }) => {
   const analysis = item.aiAnalysis;
   const viralityScore = analysis?.virality_score?.overall;
 
@@ -194,6 +195,32 @@ const IdeaCard: React.FC<IdeaCardProps> = ({ item, onClick, onDelete }) => {
         >
           <Trash2 size={14} />
         </button>
+      )}
+
+      {/* Feedback Thumbs */}
+      {onFeedback && item.status === 'idea' && (
+        <div className="absolute bottom-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onFeedback(item.id, 'like');
+            }}
+            className={`p-1.5 rounded-md transition-colors ${item.feedback === 'like' ? 'bg-emerald-100 text-emerald-600' : 'text-gray-400 hover:bg-gray-100 hover:text-emerald-500'}`}
+            title="Me gusta esta idea"
+          >
+            <ThumbsUp size={16} className={item.feedback === 'like' ? 'fill-current' : ''} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onFeedback(item.id, 'dislike');
+            }}
+            className={`p-1.5 rounded-md transition-colors ${item.feedback === 'dislike' ? 'bg-red-100 text-red-600' : 'text-gray-400 hover:bg-gray-100 hover:text-red-500'}`}
+            title="No me gusta esta idea"
+          >
+            <ThumbsDown size={16} className={item.feedback === 'dislike' ? 'fill-current' : ''} />
+          </button>
+        </div>
       )}
     </div>
   );

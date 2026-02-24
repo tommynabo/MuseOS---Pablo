@@ -9,11 +9,11 @@ const openai = new OpenAI({
 /**
  * 1. QUERY EXPANSION: Transform simple keywords into intent-based search queries
  */
-export const expandSearchQuery = async (topic: string): Promise<string[]> => {
+export const expandSearchQuery = async (topic: string, userPreferences?: string): Promise<string[]> => {
     const prompt = `
     Actúa como un experto en búsqueda avanzada de LinkedIn.
     Transforma el tema "${topic}" en 3 búsquedas booleanas específicas para encontrar contenido de ALTO VALOR (no genérico).
-    
+    ${userPreferences ? `\nTÉN EN CUENTA ESTAS PREFERENCIAS AL GENERAR BÚSQUEDAS:\n${userPreferences}\n` : ''}
     Genera 3 variaciones:
     1. "Historia/Aprendizaje": "${topic}" AND ("error" OR "aprendí" OR "lección" OR "historia")
     2. "Táctico/How-To": "${topic}" AND ("cómo" OR "paso a paso" OR "guía" OR "estrategia")
@@ -49,7 +49,7 @@ export const expandSearchQuery = async (topic: string): Promise<string[]> => {
  * 2. RELATIVE VIRALITY SCORING (The Sniffer)
  * Finds "Hidden Gems" by analyzing engagement ratios, not just raw volume.
  */
-export const evaluatePostEngagement = async (posts: any[]): Promise<any[]> => {
+export const evaluatePostEngagement = async (posts: any[], userPreferences?: string): Promise<any[]> => {
     if (posts.length === 0) return [];
 
     // Pre-calculate metrics for the AI to make it easier
@@ -81,7 +81,7 @@ export const evaluatePostEngagement = async (posts: any[]): Promise<any[]> => {
     Busca posts que tengan:
     1. ALTO DEBATE: Ratio comentarios/likes alto (> 0.1). Indica que el tema tocó una fibra.
     2. ALTA UTILIDAD: Ratio shares/likes alto. Indica que la gente lo guarda.
-    
+    ${userPreferences ? `\nIMPORTANTE - PREFERENCIAS DEL USUARIO:\nPenaliza severamente y NO SELECCIONES posts que hablen de temas que "NO LE GUSTA" al usuario. Prioriza temas que "LE GUSTA".\n${userPreferences}\n` : ''}
     DATA:
     ${JSON.stringify(postsData, null, 2)}
     

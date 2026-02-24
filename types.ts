@@ -47,6 +47,7 @@ export interface ContentPiece {
   status: ContentStatus;
   targetDate?: string; // ISO string
   tags: string[]; // e.g., "Viral Reference", "News Based"
+  feedback?: 'like' | 'dislike';
 }
 
 export interface ClientProfile {
