@@ -10,11 +10,97 @@ const client = new ApifyClient({
 });
 
 /**
+ * 🔍 FILTER 1: Detect if post is in English or Spanish (Hispanic languages)
+ */
+const isValidLanguage = (text: string): boolean => {
+    if (!text) return false;
+    
+    // Spanish indicators (more specific than just checking for letters)
+    const spanishPatterns = [
+        /\b(el|la|los|las|un|una|y|o|de|que|para|por|con|es|está|son|estoy|tengo|he|hemos|puedo|quiero|necesito|también|toda|sobre|mismo)\b/gi,
+        /\b(post|contenido|trabajo|empresa|marketing|desarrollo|proyecto|equipo|cliente|objetivo)\b/gi
+    ];
+    
+    // English indicators
+    const englishPatterns = [
+        /\b(the|a|an|and|or|of|to|in|is|are|am|have|has|can|could|would|should|they|them|their)\b/gi,
+        /\b(post|content|work|company|marketing|development|project|team|client|goal)\b/gi
+    ];
+    
+    const spanishMatches = spanishPatterns.reduce((acc, pattern) => acc + (text.match(pattern) || []).length, 0);
+    const englishMatches = englishPatterns.reduce((acc, pattern) => acc + (text.match(pattern) || []).length, 0);
+    
+    // If we find enough matches in either language, consider it valid
+    // Minimum 3 matches to avoid false positives
+    return spanishMatches >= 3 || englishMatches >= 3;
+};
+
+/**
+ * 🚫 FILTER 2: Exclude job-hunting, CV, career-seeking, recruitment posts
+ */
+const isNotJobSeekingContent = (text: string, authorName?: string): boolean => {
+    if (!text) return true;
+    
+    const combinedText = `${text} ${authorName || ''}`.toLowerCase();
+    
+    // Keywords that indicate job-seeking, recruitment, or career services
+    const excludeKeywords = [
+        // Job seeking / recruitment
+        'job', 'jobs', 'hire', 'hiring', 'recruit', 'recruitment', 'candidat', 'candidate',
+        'cv', 'resume', 'cv:', 'resume:', 'looking for job', 'seek employment', 'seeking role',
+        'available for', 'open to', 'open for', 'trabajo', 'empleo', 'contratació',
+        
+        // Career coaching / resume services
+        'career coach', 'resume review', 'cv review', 'career coach', 'career guidance',
+        'interview prep', 'linkedin profile', 'personal branding for job',
+        
+        // Recruitment firms / headhunters
+        'recruitment firm', 'executive search', 'headhunt', 'placement agency',
+        'staffing', 'talent acquisition', 'recruiter',
+        
+        // Spanish equivalents
+        'busco trabajo', 'oferta de empleo', 'se busca', 'seleccion personal',
+        'recursos humanos', 'reclutador', 'agencia de empleo', 'búsqueda laboral',
+        'disponible para', 'abierto a nuevas', 'puesto de', 'vacante'
+    ];
+    
+    // Check if any exclude keyword is found
+    for (const keyword of excludeKeywords) {
+        if (combinedText.includes(keyword.toLowerCase())) {
+            return false; // This is job-seeking content, exclude it
+        }
+    }
+    
+    return true; // This is valid content
+};
+
+/**
+ * Combined filter: Check if post is valid by language and theme
+ */
+const isValidPostByThemeAndLanguage = (text: string, authorName?: string): boolean => {
+    const validLanguage = isValidLanguage(text);
+    const notJobSeeking = isNotJobSeekingContent(text, authorName);
+    
+    if (!validLanguage) {
+        console.log(`[Filter] Post rejected: Invalid language (not English/Spanish)`);
+        return false;
+    }
+    
+    if (!notJobSeeking) {
+        console.log(`[Filter] Post rejected: Job-seeking/recruitment content`);
+        return false;
+    }
+    
+    return true;
+};
+
+/**
  * Searches LinkedIn posts with advanced "Bucket Filling" logic to ensure results.
  * Implements: 
  * 1. Loop until quota met
  * 2. Query variation/expansion on empty results
  * 3. Deduplication (session & historical)
+ * 4. Theme & Language Filtering (NEW)
  */
 export const searchLinkedInPosts = async (keywords: string[], maxPosts = 5) => {
     // State for the "Bucket Filling" loop
@@ -111,6 +197,16 @@ export const searchLinkedInPosts = async (keywords: string[], maxPosts = 5) => {
                    continue; 
                 }
 
+                // D. LANGUAGE & THEME FILTERS (NEW)
+                // Filter 1: Only English or Spanish posts
+                // Filter 2: Exclude job-seeking, recruitment, CV posts
+                const postContent = truncatedText;
+                const authorName = (item as any).authorName || (item as any).author?.name || '';
+                
+                if (!isValidPostByThemeAndLanguage(postContent, authorName)) {
+                    continue; // Skip this post
+                }
+
                 // If it passes all checks, add to bucket
                 accumulatedPosts.push(item);
                 sessionProcessedUrls.add(postUrl);
@@ -159,12 +255,22 @@ export const getCreatorPosts = async (profileUrls: string[], maxPosts = 3) => {
         const run = await client.actor("A3cAPGpwBEG8RJwse").call(input);
         const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
-        // Filter by engagement: Relaxed for creators too (>20 likes or >3 comments)
+        // Filter by engagement and language/theme filters
         const qualityPosts = items
             .filter((item: any) => {
                 const likes = item.likesCount || item.likesNumber || 0;
                 const comments = item.commentsCount || item.commentsNumber || 0;
-                return likes > 20 || comments > 3;
+                
+                // A. Basic engagement filter
+                if (likes <= 20 && comments <= 3) {
+                    return false;
+                }
+                
+                // B. Language & Theme filters
+                const postText = (item as any).text || (item as any).postText || (item as any).content || '';
+                const authorName = (item as any).authorName || (item as any).author?.name || '';
+                
+                return isValidPostByThemeAndLanguage(postText, authorName);
             })
             .sort((a: any, b: any) => {
                 const scoreA = (a.likesCount || 0) + (a.commentsCount || 0) * 5;
